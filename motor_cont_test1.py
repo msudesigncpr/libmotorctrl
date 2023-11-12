@@ -1,5 +1,6 @@
 from pymodbus.client import ModbusTcpClient
 import sys
+import time
 
 def rback():
     result = client.read_holding_registers(0x0, 0x4)
@@ -11,40 +12,46 @@ def rback():
         print(result.registers)
         print(format(result.registers[0], '0{}_b'.format(8 * 8)))
 
+def wout(register_out):
+    result = client.write_registers(0x0, register_out)
+    if result.isError():
+        print("Modbus error!")
+        sys.exit(2)
+
+    rback()
+    time.sleep(0.1)
+
 client = ModbusTcpClient('192.168.2.23')
 client.connect()
 
 rback()
 
-result = client.write_registers(0x0, [0x0000, 0x0100, 0x0000, 0x0000])
-if result.isError():
-    print("Modbus error!")
-    sys.exit(2)
+print("BLOCK 1")
+wout([0x0000, 0x0100, 0x0000, 0x0000])
 
-rback()
+print("BLOCK 2")
+wout([0x0100, 0x0100, 0x0000, 0x0000]) # Assert CCON.ENABLED
 
-result = client.write_registers(0x0, [0x0100, 0x0100, 0x0000, 0x0000])
-if result.isError():
-    print("Modbus error!")
-    sys.exit(2)
+print("BLOCK 3")
+wout([0x0300, 0x0100, 0x0000, 0x0000]) # Assert CCON.STOP
 
-rback()
+print("BLOCK 4")
+wout([0x0301, 0x0100, 0x0000, 0x0000]) # Assert CPOS.HALT
 
-result = client.write_registers(0x0, [0x0300, 0x0100, 0x0000, 0x0000]) # Assert CCON.STOP
-if result.isError():
-    print("Modbus error!")
-    sys.exit(2)
+print("BLOCK 5")
+wout([0x0701, 0x0100, 0x0000, 0x0000]) # Assert CCON.BRAKE
 
-result = client.write_registers(0x0, [0x0301, 0x0100, 0x0000, 0x0000]) # Assert CPOS.HALT
-if result.isError():
-    print("Modbus error!")
-    sys.exit(2)
+print("BLOCK 6")
+wout([0x0F01, 0x0100, 0x0000, 0x0000]) # Assert CCON.RESET
+
+print("BLOCK 7")
+wout([0x0701, 0x0100, 0x0000, 0x0000]) # Assert CCON.BRAKE
 
 # Homing
-result = client.write_registers(0x0, [0x0305, 0x0100, 0x0000, 0x0000]) # Assert CPOS.HOM
-if result.isError():
-    print("Modbus error!")
-    sys.exit(2)
+for i in range(100):
+    print("BLOCK 8")
+    wout([0x0F05, 0x0100, 0x0000, 0x0000]) # Assert CPOS.HOM
+    time.sleep(0.1)
 wait = input("Waiting...")
 
 # while readCurrent & 4 == 0 % while Motion not Complete
