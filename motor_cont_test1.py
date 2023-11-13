@@ -4,91 +4,100 @@ import logging
 import threading
 import time
 
-DONE = False
-register_to_write = [0x0000, 0x0000, 0x0000, 0x0000]
 
-def rback():
-    result = client.read_holding_registers(0x0, 0x4)
+class Drive:
+    def __init__(self, name, ip_addr):
+        self.name = name
+        self.ip_addr = ip_addr
+        self.client = ModbusTcpClient(ip_addr)
+        self.terminated = False
+        self.register_out = [0x0000, 0x0000, 0x0000, 0x0000]
+        self.reg_status = {"motion_complete": False}
 
-    if result.isError():
-        logging.error("Modbus error!")
-        sys.exit(2)
-    else:
-        print(result.registers)
-        # print(format(result.registers[0], '0{}_b'.format(8 * 8)))
+        self.client.connect()
+        logging.info("%s : Client is connected!", name)
 
-def wout(register_out):
-    result = client.write_registers(0x0, register_out)
-    if result.isError():
-        print("Modbus error!")
-        sys.exit(2)
+        logging.info("%s : Initializing write thread...", name)
+        self.write_worker = threading.Thread(target=self.worker)
+        logging.info("%s : Starting write thread...", name)
+        self.write_worker.start()
 
-    rback()
-    time.sleep(0.1)
+    def terminate(self):
+        self.terminated = True
+        self.write_worker.join()
+        self.client.close()
 
-def worker():
-    logging.info("Write : starting")
-    while not DONE:
-        logging.info("Write : Writing...")
-        wout(register_to_write)
-        rback()
+    def reg_read(self):
+        result = self.client.read_holding_registers(0x0, 0x4)
+
+        if result.isError():
+            logging.error("%s : Modbus error!", self.name)
+            sys.exit(2)
+        else:
+            print(result.registers)
+            self.reg_status["motion_complete"] = (result.registers[0] & 0x4) == 0x4
+            print("Motion complete:", self.reg_status["motion_complete"])
+
+    def reg_write(self, register_out):
+        result = self.client.write_registers(0x0, register_out)
+        if result.isError():
+            print("Modbus error!")
+            sys.exit(2)
+
+        self.reg_read()
         time.sleep(0.1)
-    logging.info("Write : Exiting")
+
+    def worker(self):
+        logging.info("%s : Started", self.name)
+        while not self.terminated:
+            logging.info("%s : Writing...", self.name)
+            self.reg_write(self.register_out)
+            self.reg_read()
+            time.sleep(0.1)
+        logging.info("%s : Exiting", self.name)
+
 
 if __name__ == "__main__":
     format = "%(asctime)s: %(message)s"
-    logging.basicConfig(format=format, level=logging.INFO,
-                        datefmt="%H:%M:%S")
+    logging.basicConfig(format=format, level=logging.INFO, datefmt="%H:%M:%S")
 
+    print("Main: Spawning z-axis control...")
+    drive_c = Drive("Z", "192.168.2.23")
 
-    client = ModbusTcpClient('192.168.2.23')
-    client.connect()
-    logging.info("Main : Client is connected!")
+    print("Clearing registers...")
+    drive_c.register_out = [0x0000, 0x0100, 0x0000, 0x0000]
+    time.sleep(0.2)
 
-    logging.info("Main : Initializing write thread...")
-    write_worker = threading.Thread(target=worker)
-    logging.info("Main : Starting write thread...")
-    write_worker.start()
+    print("Enabling drive...")
+    drive_c.register_out = [0x0100, 0x0100, 0x0000, 0x0000]  # Assert CCON.ENABLED
+    time.sleep(0.2)
 
-    print("BLOCK 1")
-    register_to_write = [0x0000, 0x0100, 0x0000, 0x0000]
-    time.sleep(1)
+    print("Disabling stop...")
+    drive_c.register_out = [0x0300, 0x0100, 0x0000, 0x0000]  # Assert CCON.STOP
+    time.sleep(0.2)
 
-    print("BLOCK 2")
-    register_to_write = [0x0100, 0x0100, 0x0000, 0x0000] # Assert CCON.ENABLED
-    time.sleep(1)
+    print("Disabling halt...")
+    drive_c.register_out = [0x0301, 0x0100, 0x0000, 0x0000]  # Assert CPOS.HALT
+    time.sleep(0.2)
 
-    print("BLOCK 3")
-    register_to_write = [0x0300, 0x0100, 0x0000, 0x0000] # Assert CCON.STOP
-    time.sleep(1)
+    print("Disabling brake...")
+    drive_c.register_out = [0x0701, 0x0100, 0x0000, 0x0000]  # Assert CCON.BRAKE
+    time.sleep(0.2)
 
-    print("BLOCK 4")
-    register_to_write = [0x0301, 0x0100, 0x0000, 0x0000] # Assert CPOS.HALT
-    time.sleep(1)
+    print("Clearing faults...")
+    drive_c.register_out = [0x0F01, 0x0100, 0x0000, 0x0000]  # Assert CCON.RESET
+    time.sleep(0.2)
 
-    print("BLOCK 5")
-    register_to_write = [0x0701, 0x0100, 0x0000, 0x0000] # Assert CCON.BRAKE
-    time.sleep(1)
+    print("De-asserting reset...")
+    drive_c.register_out = [0x0701, 0x0100, 0x0000, 0x0000]  # Assert CCON.BRAKE
+    time.sleep(0.2)
 
-    print("BLOCK 6")
-    register_to_write = [0x0F01, 0x0100, 0x0000, 0x0000] # Assert CCON.RESET
-    time.sleep(1)
+    drive_c.register_out = [0x0F05, 0x0100, 0x0000, 0x0000]  # Assert CPOS.HOM
+    time.sleep(0.2)
 
-    print("BLOCK 7")
-    register_to_write = [0x0701, 0x0100, 0x0000, 0x0000] # Assert CCON.BRAKE
-    time.sleep(1)
-
-    register_to_write = [0x0F05, 0x0100, 0x0000, 0x0000] # Assert CPOS.HOM
-    time.sleep(0.1)
-
-    # TODO Block await homing
-
-    # Homing
-    # for i in range(100):
-    #     print("BLOCK 8")
-    #     wout([0x0F05, 0x0100, 0x0000, 0x0000]) # Assert CPOS.HOM
-    #     time.sleep(0.1)
-    wait = input("Waiting...")
+    while not drive_c.reg_status["motion_complete"]:
+        time.sleep(0.1)
+    logging.info("Drive Z homing complete!")
 
     # while readCurrent & 4 == 0 % while Motion not Complete
     #      readCurrent = read(connection, 'holdingregs', 1, 4) % keep reading
@@ -96,10 +105,10 @@ if __name__ == "__main__":
     # print("HERE")
 
     # Motion
-    #result = client.write_registers(0x0, [0x0301, 0x0100, 0x0000, 0x0000]) # Deassert CPOS.HOM
-    #result = client.write_registers(0x0, [0x4301, 0x0064, 0x0000, 0x0000]) # Assert CPOS.OPM1
-    #result = client.write_registers(0x0, [0x4301, 0x0064, 0x0000, 0x2710]) # Set target to 10k
-    #result = client.write_registers(0x0, [0x4703, 0x0064, 0x0000, 0x2710]) # Start
+    # result = client.write_registers(0x0, [0x0301, 0x0100, 0x0000, 0x0000]) # Deassert CPOS.HOM
+    # result = client.write_registers(0x0, [0x4301, 0x0064, 0x0000, 0x0000]) # Assert CPOS.OPM1
+    # result = client.write_registers(0x0, [0x4301, 0x0064, 0x0000, 0x2710]) # Set target to 10k
+    # result = client.write_registers(0x0, [0x4703, 0x0064, 0x0000, 0x2710]) # Start
 
     # readCurrent = read(connection, 'holdingregs', 1, 4)
     #
@@ -113,4 +122,4 @@ if __name__ == "__main__":
     # client.write_coil(1, True, slave=1)        # set information in device
     # result = client.read_coils(2, 3, slave=1)  # get information from device
     # print(result.bits[0])                      # use information
-    client.close()                             # Disconnect device
+    drive_c.terminate()  # Disconnect device
