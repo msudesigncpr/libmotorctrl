@@ -87,11 +87,11 @@ class Drive:
         }
 
         self.client.connect()
-        logging.info("%s : Client is connected!", name)
+        logging.info("Client is connected!")
 
-        logging.info("%s : Initializing write thread...", name)
-        self.write_worker = threading.Thread(target=self.worker)
-        logging.info("%s : Starting write thread...", name)
+        logging.info("Initializing write thread...")
+        self.write_worker = threading.Thread(target=self.worker, name=self.name)
+        logging.info("Starting write thread...")
         self.write_worker.start()
         time.sleep(0.2)
         self.initialize()
@@ -99,40 +99,40 @@ class Drive:
     def initialize(self):
         time.sleep(0.2)
 
-        logging.info("%s : Enabling drive...", self.name)
+        logging.info("Enabling drive...")
         self.reg_control["drive_enabled"] = True
         time.sleep(0.2)
 
-        logging.info("%s : Disabling stop...", self.name)
+        logging.info("Disabling stop...")
         self.reg_control["operation_enabled"] = True
         time.sleep(0.2)
 
-        logging.info("%s : Disabling halt...", self.name)
+        logging.info("Disabling halt...")
         self.reg_control["halt_active"] = False
         time.sleep(0.2)
 
-        logging.info("%s : Disabling brake...", self.name)
+        logging.info("Disabling brake...")
         self.reg_control["brake_active"] = False
         time.sleep(0.2)
 
-        logging.info("%s : Clearing faults...", self.name)
+        logging.info("Clearing faults...")
         self.reg_control["reset"] = True
         time.sleep(0.2)
 
-        logging.info("%s : De-asserting reset...", self.name)
+        logging.info("De-asserting reset...")
         self.reg_control["reset"] = False
         time.sleep(0.2)
 
-        logging.info("%s : Starting homing...", self.name)
+        logging.info("Starting homing...")
         self.reg_control["homing_start"] = True
         time.sleep(0.2)
 
         while not self.reg_status["motion_complete"]:
             time.sleep(0.1)
         self.reg_control["homing_start"] = False
-        logging.info("%s : Drive homing complete!", self.name)
+        logging.info("Drive homing complete!")
 
-        logging.info("%s : Setting operation mode to direct application...", self.name)
+        logging.info("Setting operation mode to direct application...")
         self.reg_control["operation_mode"] = OpMode.DIRECTAPP
         self.reg_control["preselection"] = 100
         time.sleep(0.2)
@@ -152,10 +152,10 @@ class Drive:
         result = self.client.read_holding_registers(0x0, 0x4)
 
         if result.isError():
-            logging.error("%s : Modbus error!", self.name)
+            logging.error("Modbus read response was an error!")
             sys.exit(2)
         else:
-            logging.debug("%s : Raw register state is %s", self.name, result.registers)
+            logging.debug("Raw device register state is %s", result.registers)
 
             # Parse SCON
             self.reg_status["drive_enabled"] = bool(
@@ -206,9 +206,7 @@ class Drive:
                 result.registers[3]
             )
 
-            logging.debug(
-                "%s : Parsed register state is %s", self.name, self.reg_status
-            )
+            logging.debug("Parsed device register state is %s", self.reg_status)
 
     def reg_write(self):
         register_out = [0x0000, 0x0000, 0x0000, 0x0000]
@@ -241,21 +239,21 @@ class Drive:
         # SP 2
         register_out[2] |= self.reg_control["setpoint"] >> 16
         register_out[3] |= self.reg_control["setpoint"] & 0xFFFF
-        logging.debug("%s : Register write: %s", self.name, register_out)
+        logging.debug("Raw register write buffer: %s", register_out)
 
         result = self.client.write_registers(0x0, register_out)
         if result.isError():
-            logging.error("%s : Communication error!", self.name)
+            logging.error("Modbus write response was an error!")
             sys.exit(2)
 
         self.reg_read()
         time.sleep(0.1)
 
     def worker(self):
-        logging.info("%s : Worker started", self.name)
+        logging.info("Worker started")
         while not self.terminated:
-            logging.debug("%s : Writing registers...", self.name)
+            logging.debug("Writing registers...")
             self.reg_write()
             self.reg_read()
             time.sleep(0.1)
-        logging.info("%s : Worker exiting...", self.name)
+        logging.info("Worker exiting...")
