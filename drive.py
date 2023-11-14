@@ -139,7 +139,12 @@ class Drive:
         self.drive_init_event.set()
 
     def terminate(self):
+        self.reg_control["drive_enabled"] = False
+        self.reg_control["operation_enabled"] = False
+        self.reg_control["halt_active"] = True
+        time.sleep(0.2)
         self.terminated = True
+        time.sleep(0.2)
         self.write_worker.join()
         self.client.close()
 
