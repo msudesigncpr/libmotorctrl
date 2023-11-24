@@ -5,6 +5,8 @@ from drive import Drive
 # TODO Add locks
 # TODO Add timeouts to lock acquisition
 # TODO Clamp values
+# TODO Refactor parse/write
+
 LOGLEVEL = logging.INFO
 TARGETS = [
     (0, 0, 80_000),
@@ -18,37 +20,37 @@ TARGETS = [
 
 def xy_move(drive_x, drive_y, target_x, target_y):
     logging.info("Setting target XY position to (%s, %s) [um]...", target_x, target_y)
-    drive_x.reg_control["setpoint"] = target_x
-    drive_y.reg_control["setpoint"] = target_y
+    drive_x.reg_control.setpoint = target_x
+    drive_y.reg_control.setpoint = target_y
     time.sleep(0.2)
 
     logging.info("Starting XY motion...")
-    drive_x.reg_control["positioning_start"] = True
-    drive_y.reg_control["positioning_start"] = True
+    drive_x.reg_control.positioning_start = True
+    drive_y.reg_control.positioning_start = True
     time.sleep(0.4)
 
     while (
-        not drive_x.reg_status["motion_complete"]
-        or not drive_y.reg_status["motion_complete"]
+        not drive_x.reg_status.motion_complete
+        or not drive_y.reg_status.motion_complete
     ):
         time.sleep(0.1)
-    drive_x.reg_control["positioning_start"] = False
-    drive_y.reg_control["positioning_start"] = False
+    drive_x.reg_control.positioning_start = False
+    drive_y.reg_control.positioning_start = False
     logging.info("Drive XY positioning complete!")
 
 
 def z_move(drive_z, target_z):
     logging.info("Setting target Z position to %s um...", target_z)
-    drive_z.reg_control["setpoint"] = target_z
+    drive_z.reg_control.setpoint = target_z
     time.sleep(0.2)
 
     logging.info("Starting Z motion...")
-    drive_z.reg_control["positioning_start"] = True
+    drive_z.reg_control.positioning_start = True
     time.sleep(0.4)
 
-    while not drive_z.reg_status["motion_complete"]:
+    while not drive_z.reg_status.motion_complete:
         time.sleep(0.1)
-    drive_z.reg_control["positioning_start"] = False
+    drive_z.reg_control.positioning_start = False
     logging.info("Drive Z positioning complete!")
 
 
