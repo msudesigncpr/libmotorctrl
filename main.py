@@ -8,18 +8,25 @@ from drive import Drive
 # TODO Refactor parse/write
 
 LOGLEVEL = logging.INFO
+
+CRUISE_DEPTH = 70_000
+# DRILL_DEPTH = 72_500
+
 TARGETS = [
-    (0, 0, 80_000),
-    (50_000, 50_000, 100_000),
-    (50_000, 50_000, 80_000),
-    (200_000, 200_000, 100_000),
-    (200_000, 200_000, 80_000),
-    (0, 0, 0),
+    (0, 0, 73_000),
+    (490_000, 225_000, 85_000),
+    (0, 0, 73_000),
+    (490_000, 0, 75_000),
+    (490_000, 225_000, 85_000),
+    (245_000, 112_000, 80_000),
 ]
 
 
-def xy_move(drive_x, drive_y, target_x, target_y):
-    logging.info("Setting target XY position to (%s, %s) [um]...", target_x, target_y)
+def move(drive_x, drive_y, drive_z, target_x, target_y, target_z):
+    logging.info("Setting target position to (%s, %s, %s) [um]...", target_x, target_y, target_z)
+
+    z_move(drive_z, CRUISE_DEPTH)
+
     drive_x.reg_control.setpoint = target_x
     drive_y.reg_control.setpoint = target_y
     time.sleep(0.2)
@@ -37,6 +44,8 @@ def xy_move(drive_x, drive_y, target_x, target_y):
     drive_x.reg_control.positioning_start = False
     drive_y.reg_control.positioning_start = False
     logging.info("Drive XY positioning complete!")
+
+    z_move(drive_z, target_z)
 
 
 def z_move(drive_z, target_z):
@@ -73,9 +82,10 @@ if __name__ == "__main__":
     drive_z.drive_init_event.wait()
     logging.info("Drive Z initialized")
 
+    _ = input()
     for target in TARGETS:
-        xy_move(drive_x, drive_y, target[0], target[1])
-        z_move(drive_z, target[2])
+        move(drive_x, drive_y, drive_z, target[0], target[1], target[2])
+        _ = input()
 
     logging.info("Terminating workers...")
     drive_x.terminate()
