@@ -1,0 +1,11 @@
+Positioning Results,,,,
+Comparison Parameter,Average Error Magnitude (mm),Variance (mm^2),P-Value (one-tail),Conclusion
+Worst-case x-axis,=AVERAGE($worst_cos.M3:M11),=VAR.S($worst_cos.M3:M11),,
+Worst-case y-axis,=AVERAGE($worst_cos.N3:N11),=VAR.S($worst_cos.N3:N11),,
+Average-case x-axis,=AVERAGE($avg_cos.N3:N21),=VAR.S($avg_cos.N3:N21),,
+Average-case y-axis,=AVERAGE($avg_cos.O3:O21),=VAR.S($avg_cos.O3:O21),,
+,,,,
+Timing Results,,,,
+,Axis Velocity (mm/s),,,
+Worst-case x-axis limiting,,,,
+Worst-case y-axis limiting,,,,

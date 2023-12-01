@@ -1,0 +1,11 @@
+Positioning Results,,,,
+Comparison Parameter,Average Error Magnitude (mm),Variance (mm^2),P-Value (one-tail),Conclusion
+Worst-case x-axis,=AVERAGE($worst_sty.M3:M11),=VAR.S($worst_sty.M3:M11),0.4781,No significant difference
+Worst-case y-axis,=AVERAGE($worst_sty.N3:N11),=VAR.S($worst_sty.N3:N11),0.4579,No significant difference
+Average-case x-axis,=AVERAGE($avg_sty.N3:N21),=VAR.S($avg_sty.N3:N21),0.2188,No significant difference
+Average-case y-axis,=AVERAGE($avg_sty.O3:O21),=VAR.S($avg_sty.O3:O21),0.2752,No significant difference
+,,,,
+Timing Results,,,,
+,Axis Velocity (mm/s),,,
+Worst-case x-axis limiting,,,,
+Worst-case y-axis limiting,,,,
