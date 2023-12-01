@@ -13,13 +13,27 @@ CRUISE_DEPTH = 70_000
 # DRILL_DEPTH = 72_500
 
 TARGETS = [
-    (0, 0, 73_000),
-    (490_000, 225_000, 85_000),
-    (0, 0, 73_000),
-    (490_000, 0, 75_000),
-    (490_000, 225_000, 85_000),
-    (245_000, 112_000, 80_000),
-]
+        (0, 0, 80_000),
+        (459_000, 194_000, 87_000),
+        (33_000, 43_000, 82_000),
+        (40_000, 100_000, 84_000),
+        (459_000, 194_000, 87_000),
+        (140_000, 60_000, 82_000),
+        (347_000, 60_000, 82_000),
+        (459_000, 194_000, 87_000),
+        (250_000, 60_000, 82_000),
+        (450_000, 165_000, 86_000),
+        (459_000, 194_000, 87_000),
+        (133_000, 186_000, 87_000),
+        (347_000, 60_000, 82_000),
+        (459_000, 194_000, 87_000),
+        (240_000, 186_000, 87_000),
+        (40_000, 100_000, 84_000),
+        (459_000, 194_000, 87_000),
+        (347_000, 186_000, 87_000),
+        (450_000, 165_000, 86_000),
+        (459_000, 194_000, 87_000),
+        ]
 
 
 def move(drive_x, drive_y, drive_z, target_x, target_y, target_z):
@@ -71,20 +85,23 @@ if __name__ == "__main__":
     )
 
     logging.info("Spawning drive controllers...")
+    drive_z = Drive("Z", "192.168.2.23")
     drive_x = Drive("X", "192.168.2.21")
     drive_y = Drive("Y", "192.168.2.22")
-    drive_z = Drive("Z", "192.168.2.23")
 
+    drive_z.drive_init_event.wait()
+    logging.info("Drive Z initialized")
     drive_x.drive_init_event.wait()
     logging.info("Drive X initialized")
     drive_y.drive_init_event.wait()
     logging.info("Drive Y initialized")
-    drive_z.drive_init_event.wait()
-    logging.info("Drive Z initialized")
 
     _ = input()
     for target in TARGETS:
+        start_time = time.time()
         move(drive_x, drive_y, drive_z, target[0], target[1], target[2])
+        duration = time.time() - start_time
+        print("Duration: {:.2f}".format(duration))
         _ = input()
 
     logging.info("Terminating workers...")
