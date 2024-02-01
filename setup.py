@@ -7,5 +7,5 @@ setup(
     description="Interface for the CMMO-ST drive controller 3-axis system",
     author="William Culhane",
     url="https://github.com/msudesigncpr/libmotorctrl",
-    install_requires=["pymodbus=3.6.3"],
+    install_requires=["pymodbus>=3.6.3,<4.0.0"],
 )
