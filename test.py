@@ -1,5 +1,5 @@
 import logging
-from libmotorctrl import DriveController, DriveTarget
+from libmotorctrl import DriveOverseer, DriveTarget
 
 LOGLEVEL = logging.INFO
 
@@ -9,7 +9,7 @@ logging.basicConfig(
     datefmt="%H:%M:%S",
 )
 
-drive_ctrl = DriveController()
+drive_ctrl = DriveOverseer()
 drive_ctrl.home(DriveTarget.DriveZ)
 drive_ctrl.home(DriveTarget.DriveX)
 drive_ctrl.home(DriveTarget.DriveY)

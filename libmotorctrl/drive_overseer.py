@@ -18,7 +18,7 @@ class DriveTarget(Enum):
     DriveZ = 2
 
 
-class DriveController:
+class DriveOverseer:
     def __init__(self):
         logging.info("Spawning drive controllers...")
         self.drive_x = Drive("X", "192.168.2.21")
