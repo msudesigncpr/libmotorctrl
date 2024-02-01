@@ -82,13 +82,13 @@ class StatusRegisters:
     # SP 2
     setpoint: int
 
+
 class Drive:
     def __init__(self, name, ip_addr):
         self.name = name
         self.ip_addr = ip_addr
-        self.drive_init_event = threading.Event()  # To alert main thread
-        self.client = ModbusTcpClient(ip_addr)
         self.terminated = False
+        self.client = ModbusTcpClient(ip_addr)
         self.reg_control = ControlRegisters(
             # CCON
             drive_enabled=False,
@@ -150,10 +150,9 @@ class Drive:
         self.write_worker = threading.Thread(target=self.worker, name=self.name)
         logging.info("Starting write thread...")
         self.write_worker.start()
-        time.sleep(0.2)
-        self.initialize()
 
     def initialize(self):
+        self.drive_init_event = threading.Event()  # To alert main thread
         time.sleep(0.2)
 
         logging.info("Enabling drive...")
@@ -180,26 +179,32 @@ class Drive:
         self.reg_control.reset = False
         time.sleep(0.2)
 
-        logging.info("Starting homing...")
-        self.reg_control.homing_start = True
-        time.sleep(0.2)
-
-        while not self.reg_status.motion_complete:
-            time.sleep(0.1)
-        self.reg_control.homing_start = False
-        logging.info("Drive homing complete!")
-
         logging.info("Setting operation mode to direct application...")
         self.reg_control.operation_mode = OpMode.DIRECTAPP
         self.reg_control.preselection = 100
         time.sleep(0.2)
         self.drive_init_event.set()
 
+    def home(self):
+        self.drive_home_event = threading.Event()  # To alert main thread
+        logging.info("Starting homing...")
+        self.reg_control.homing_start = True
+        time.sleep(0.2)
+        self.reg_control.homing_start = False
+
+        time.sleep(0.4)
+        while not self.reg_status.motion_complete:
+            time.sleep(0.1)
+        logging.info("Drive homing complete!")
+        self.drive_home_event.set()
+
     def terminate(self):
         self.reg_control.drive_enabled = False
         self.reg_control.operation_enabled = False
         self.reg_control.halt_active = True
-        time.sleep(0.2)
+        self.reg_control.brake_active = True
+        self.reg_control.reset = True
+        time.sleep(0.4)
         self.terminated = True
         time.sleep(0.2)
         self.write_worker.join()
