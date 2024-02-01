@@ -82,7 +82,6 @@ class StatusRegisters:
     # SP 2
     setpoint: int
 
-# 220 by 500
 class Drive:
     def __init__(self, name, ip_addr):
         self.name = name
