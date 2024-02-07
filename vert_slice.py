@@ -1,4 +1,6 @@
 import logging
+import random
+import sys
 import time
 from dataclasses import dataclass
 from libmotorctrl import DriveOverseer, DriveTarget
@@ -27,6 +29,7 @@ class PetriDish:
 
 @dataclass
 class Well:
+    id: int
     x: int
     y: int
     has_sample: bool
@@ -44,26 +47,25 @@ class Colony:
 
 PETRI_DISH_COORDINATES = [
     PetriDish(id=1, x=2600, y=-2460),
-    PetriDish(id=2, x=2600, y=-2460),
-    PetriDish(id=3, x=7100, y=-2460),
-    PetriDish(id=4, x=11600, y=-2460),
-    PetriDish(id=5, x=16100, y=-2460),
-    PetriDish(id=6, x=2600, y=2290),
-    PetriDish(id=7, x=7100, y=2290),
+    PetriDish(id=2, x=7100, y=-2460),
+    PetriDish(id=3, x=11600, y=-2460),
+    PetriDish(id=4, x=16100, y=-2460),
+    PetriDish(id=5, x=2600, y=2290),
+    PetriDish(id=6, x=7100, y=2290),
 ]
 
 WELL_COORDINATES = [
-    Well(x=0, y=0, has_sample=False, origin=None),  # TODO
-    Well(x=0, y=0, has_sample=False, origin=None),  # TODO
-    Well(x=0, y=0, has_sample=False, origin=None),  # TODO
-    Well(x=0, y=0, has_sample=False, origin=None),  # TODO
-    Well(x=0, y=0, has_sample=False, origin=None),  # TODO
-    Well(x=0, y=0, has_sample=False, origin=None),  # TODO
-    Well(x=0, y=0, has_sample=False, origin=None),  # TODO
-    Well(x=0, y=0, has_sample=False, origin=None),  # TODO
-    Well(x=0, y=0, has_sample=False, origin=None),  # TODO
-    Well(x=0, y=0, has_sample=False, origin=None),  # TODO
-    Well(x=0, y=0, has_sample=False, origin=None),  # TODO
+    Well(id=1, x=0, y=0, has_sample=False, origin=None),  # TODO
+    Well(id=2, x=0, y=0, has_sample=False, origin=None),  # TODO
+    Well(id=3, x=0, y=0, has_sample=False, origin=None),  # TODO
+    Well(id=4, x=0, y=0, has_sample=False, origin=None),  # TODO
+    Well(id=5, x=0, y=0, has_sample=False, origin=None),  # TODO
+    Well(id=6, x=0, y=0, has_sample=False, origin=None),  # TODO
+    Well(id=7, x=0, y=0, has_sample=False, origin=None),  # TODO
+    Well(id=8, x=0, y=0, has_sample=False, origin=None),  # TODO
+    Well(id=9, x=0, y=0, has_sample=False, origin=None),  # TODO
+    Well(id=10, x=0, y=0, has_sample=False, origin=None),  # TODO
+    Well(id=11, x=0, y=0, has_sample=False, origin=None),  # TODO
 ]
 
 
@@ -98,17 +100,24 @@ def main():
     ]
 
     if len(VALID_COLONIES) > num_colonies_to_sample:
-        pass
-        # TODO Randomly select num_colonies_to_sample
+        TARGET_COLONIES = random.sample(VALID_COLONIES, num_colonies_to_sample)
+    else:
+        TARGET_COLONIES = VALID_COLONIES
 
-    for colony in VALID_COLONIES:
+    for colony in TARGET_COLONIES:
+        logging.info("Starting sampling cycle...")
+        logging.info(
+            f"Target colony is at {colony.x}, {colony.y} in Petri dish {colony.dish}"
+        )
         well_target = None
         for well_candidate in WELL_COORDINATES:
-            if well_candidate.has_sample == False:
+            if not well_candidate.has_sample:
                 well_target = well_candidate
+                logging.info(f"Target well is {well_target.id}")
                 break
         if well_target is None:
             logging.error("No unused wells!")  # TODO Handle differently
+            sys.exit(1)
         drive_ctrl.move(colony.x, colony.y, PETRI_DISH_DEPTH)
         drive_ctrl.move(well_target.x, well_target.y, WELL_DEPTH)
         well_target.has_sample = True
@@ -120,9 +129,11 @@ def main():
         )
         time.sleep(dwell_duration)
 
+    logging.info("Sampling complete!")
     drive_ctrl.terminate()
 
     # TODO Store result
+    # Have populated list of wells with origins
 
 
 if __name__ == "__main__":
