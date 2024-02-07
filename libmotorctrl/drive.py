@@ -186,17 +186,33 @@ class Drive:
         self.drive_init_event.set()
 
     def home(self):
-        self.drive_home_event = threading.Event()  # To alert main thread
+        self.drive_home_event = threading.Event()
         logging.info("Starting homing...")
         self.reg_control.homing_start = True
         time.sleep(0.2)
         self.reg_control.homing_start = False
-
         time.sleep(0.4)
+
         while not self.reg_status.motion_complete:
             time.sleep(0.1)
         logging.info("Drive homing complete!")
         self.drive_home_event.set()
+
+    def move(self, target):
+        self.drive_move_event = threading.Event()
+        self.reg_control.setpoint = target
+        time.sleep(0.2)
+
+        logging.info("Starting motion...")
+        self.reg_control.positioning_start = True
+        time.sleep(0.2)
+        self.reg_control.positioning_start = False
+        time.sleep(0.4)
+
+        while not self.reg_status.motion_complete:
+            time.sleep(0.1)
+        logging.info("Drive positioning complete!")
+        self.drive_move_event.set()
 
     def terminate(self):
         self.reg_control.drive_enabled = False

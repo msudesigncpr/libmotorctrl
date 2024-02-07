@@ -14,4 +14,9 @@ drive_ctrl.home(DriveTarget.DriveZ)
 drive_ctrl.home(DriveTarget.DriveX)
 drive_ctrl.home(DriveTarget.DriveY)
 
+drive_ctrl.move(0, 194_000, 60_000)
+drive_ctrl.move(347_000, 194_000, 60_000)
+drive_ctrl.move(347_000, 0, 40_000)
+drive_ctrl.move(347_000, 0, 0)
+
 drive_ctrl.terminate()

@@ -9,7 +9,7 @@ from .drive import Drive
 
 LOGLEVEL = logging.INFO
 
-CRUISE_DEPTH = 70_000
+CRUISE_DEPTH = 20_000
 
 
 class DriveTarget(Enum):
@@ -50,6 +50,26 @@ class DriveOverseer:
                 self.drive_z.home()
                 self.drive_z.drive_home_event.wait()
                 logging.info("Drive Z homing complete")
+
+    def move(self, target_x, target_y, target_z):
+        self.drive_z.move(CRUISE_DEPTH)
+        self.drive_z.drive_move_event.wait()
+        logging.info("Drive Z raised to cruise depth")
+
+        # TODO Do x and y motion in parallel
+        self.drive_x.move(target_x)
+        self.drive_x.drive_move_event.wait()
+        logging.info("Drive X motion complete")
+
+        self.drive_y.move(target_y)
+        self.drive_y.drive_move_event.wait()
+        self.drive_y.drive_move_event.wait()
+        logging.info("Drive Y motion complete")
+
+        self.drive_z.move(target_z)
+        self.drive_z.drive_move_event.wait()
+        logging.info("Drive Z motion complete")
+
 
     def terminate(self):
         self.drive_x.terminate()
