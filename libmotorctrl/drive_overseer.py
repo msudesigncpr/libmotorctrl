@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from enum import Enum
 from .drive import Drive
@@ -6,8 +7,6 @@ from .drive import Drive
 # TODO Add timeouts to lock acquisition
 # TODO Clamp values
 # TODO Refactor parse/write
-
-LOGLEVEL = logging.INFO
 
 CRUISE_DEPTH = 20_000
 
@@ -52,22 +51,21 @@ class DriveOverseer:
                 logging.info("Drive Z homing complete")
 
     def move(self, target_x, target_y, target_z):
-        self.drive_z.move(CRUISE_DEPTH)
-        self.drive_z.drive_move_event.wait()
+        asyncio.run(self.drive_z.move(CRUISE_DEPTH))
         logging.info("Drive Z raised to cruise depth")
 
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        tasks = [
+            loop.create_task(self.drive_x.move(target_x)),
+            loop.create_task(self.drive_y.move(target_y)),
+        ]
+        loop.run_until_complete(asyncio.wait(tasks))
+        loop.close()
         # TODO Do x and y motion in parallel
-        self.drive_x.move(target_x)
-        self.drive_x.drive_move_event.wait()
-        logging.info("Drive X motion complete")
+        logging.info("Motion complete")
 
-        self.drive_y.move(target_y)
-        self.drive_y.drive_move_event.wait()
-        self.drive_y.drive_move_event.wait()
-        logging.info("Drive Y motion complete")
-
-        self.drive_z.move(target_z)
-        self.drive_z.drive_move_event.wait()
+        asyncio.run(self.drive_z.move(target_z))
         logging.info("Drive Z motion complete")
 
 

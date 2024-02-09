@@ -5,6 +5,7 @@ import time
 import sys
 from enum import IntEnum
 from dataclasses import dataclass
+import asyncio
 
 
 class OpMode(IntEnum):
@@ -198,19 +199,19 @@ class Drive:
         logging.info("Drive homing complete!")
         self.drive_home_event.set()
 
-    def move(self, target):
+    async def move(self, target):
         self.drive_move_event = threading.Event()
         self.reg_control.setpoint = target
-        time.sleep(0.2)
+        await asyncio.sleep(0.2)
 
         logging.info("Starting motion...")
         self.reg_control.positioning_start = True
-        time.sleep(0.2)
+        await asyncio.sleep(0.4)
         self.reg_control.positioning_start = False
-        time.sleep(0.4)
+        await asyncio.sleep(0.2)
 
         while not self.reg_status.motion_complete:
-            time.sleep(0.1)
+            await asyncio.sleep(0.1)
         logging.info("Drive positioning complete!")
         self.drive_move_event.set()
 
