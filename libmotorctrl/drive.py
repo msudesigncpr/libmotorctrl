@@ -78,10 +78,10 @@ class StatusRegisters:
     control_mode: ControlMode
     speed_limit_reached: bool
     stroke_limit_reached: bool
-    # SP 1
-    preselection: int
-    # SP 2
-    setpoint: int
+    # Drive actual velocity (%)
+    velocity_percent: int
+    # Drive actual position (sinc)
+    position: int
 
 
 class Drive:
@@ -138,49 +138,51 @@ class Drive:
             control_mode=ControlMode.POSITIONING,
             speed_limit_reached=False,
             stroke_limit_reached=False,
-            # SP 1
-            preselection=0,
-            # SP 2
-            setpoint=0,
+            # Drive actual velocity (%)
+            velocity_percent=0,
+            # Drive actual position (sinc)
+            position=0,
         )
 
         self.client.connect()
-        logging.info("Client is connected!")
+        logging.debug("Client is connected!")
 
-        logging.info("Initializing write thread...")
+        logging.debug("Initializing write thread...")
         self.write_worker = threading.Thread(target=self.worker, name=self.name)
-        logging.info("Starting write thread...")
+        logging.debug("Starting write thread...")
         self.write_worker.start()
+
+    # TODO If there is an error, we need to stop movement
 
     def initialize(self):
         self.drive_init_event = threading.Event()  # To alert main thread
         time.sleep(0.2)
 
-        logging.info("Enabling drive...")
+        logging.debug("Enabling drive...")
         self.reg_control.drive_enabled = True
         time.sleep(0.2)
 
-        logging.info("Disabling stop...")
+        logging.debug("Disabling stop...")
         self.reg_control.operation_enabled = True
         time.sleep(0.2)
 
-        logging.info("Disabling halt...")
+        logging.debug("Disabling halt...")
         self.reg_control.halt_active = False
         time.sleep(0.2)
 
-        logging.info("Disabling brake...")
+        logging.debug("Disabling brake...")
         self.reg_control.brake_active = False
         time.sleep(0.2)
 
-        logging.info("Clearing faults...")
+        logging.debug("Clearing faults...")
         self.reg_control.reset = True
         time.sleep(0.2)
 
-        logging.info("De-asserting reset...")
+        logging.debug("De-asserting reset...")
         self.reg_control.reset = False
         time.sleep(0.2)
 
-        logging.info("Setting operation mode to direct application...")
+        logging.debug("Setting operation mode to direct application...")
         self.reg_control.operation_mode = OpMode.DIRECTAPP
         self.reg_control.preselection = 100
         time.sleep(0.2)
@@ -188,7 +190,7 @@ class Drive:
 
     def home(self):
         self.drive_home_event = threading.Event()
-        logging.info("Starting homing...")
+        logging.debug("Starting homing...")
         self.reg_control.homing_start = True
         time.sleep(0.2)
         self.reg_control.homing_start = False
@@ -196,7 +198,7 @@ class Drive:
 
         while not self.reg_status.motion_complete:
             time.sleep(0.1)
-        logging.info("Drive homing complete!")
+        logging.debug("Drive homing complete!")
         self.drive_home_event.set()
 
     async def move(self, target):
@@ -204,7 +206,7 @@ class Drive:
         self.reg_control.setpoint = target
         await asyncio.sleep(0.2)
 
-        logging.info("Starting motion...")
+        logging.debug("Starting motion...")
         self.reg_control.positioning_start = True
         await asyncio.sleep(0.4)
         self.reg_control.positioning_start = False
@@ -212,8 +214,11 @@ class Drive:
 
         while not self.reg_status.motion_complete:
             await asyncio.sleep(0.1)
-        logging.info("Drive positioning complete!")
+        logging.debug("Drive positioning complete!")
         self.drive_move_event.set()
+
+    def get_encoder_position(self):
+        return self.reg_status.setpoint # TODO
 
     def terminate(self):
         self.reg_control.drive_enabled = False
@@ -234,8 +239,6 @@ class Drive:
             logging.error("Modbus read response was an error!")
             sys.exit(2)
         else:
-            logging.debug("Raw device register state is %s", result.registers)
-
             # Parse SCON
             self.reg_status.drive_enabled = bool(((result.registers[0] >> 0) >> 8) & 1)
             self.reg_status.operation_enabled = bool(
@@ -268,12 +271,10 @@ class Drive:
             self.reg_status.stroke_limit_reached = bool(
                 ((result.registers[1] >> 5) >> 8) & 1
             )
-            # SP 1
-            self.reg_status.preselection = int(result.registers[1] & 0xFFFF)
-            # SP 2
-            self.reg_status.setpoint = (int(result.registers[2]) << 16) + int(
-                result.registers[3]
-            )
+            # Drive actual velocity (%)
+            self.reg_status.velocity_percent = int(result.registers[1] & 0xFFFF)
+            # Drive actual position (sinc)
+            self.reg_status.position = int((result.registers[2] << 16) + result.registers[3])
 
             logging.debug("Parsed device register state is %s", self.reg_status)
 
@@ -318,11 +319,19 @@ class Drive:
         self.reg_read()
         time.sleep(0.1)
 
+    def get_pos_mm(self):
+        return (self.reg_status.position * 7.93)
+        # TODO Find constant formula
+
+    def stop(self):
+        self.reg_control.halt = True
+        # TODO Test this
+
     def worker(self):
-        logging.info("Worker started")
+        logging.debug("Worker started")
         while not self.terminated:
             logging.debug("Writing registers...")
             self.reg_write()
             self.reg_read()
             time.sleep(0.1)
-        logging.info("Worker exiting...")
+        logging.debug("Worker exiting...")

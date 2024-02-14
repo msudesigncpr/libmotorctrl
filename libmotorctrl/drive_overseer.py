@@ -10,6 +10,7 @@ from .drive import Drive
 
 CRUISE_DEPTH = 20_000
 
+CALIBRATION_OFFSET=(0, 90_000) # Micrometers # TODO Get this from calibration
 
 class DriveTarget(Enum):
     DriveX = 0
@@ -57,16 +58,15 @@ class DriveOverseer:
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         tasks = [
-            loop.create_task(self.drive_x.move(target_x)),
-            loop.create_task(self.drive_y.move(target_y)),
+            loop.create_task(self.drive_x.move(target_x + CALIBRATION_OFFSET[0])),
+            loop.create_task(self.drive_y.move(target_y + CALIBRATION_OFFSET[1])),
         ]
         loop.run_until_complete(asyncio.wait(tasks))
         loop.close()
-        # TODO Do x and y motion in parallel
-        logging.info("Motion complete")
+        logging.info("XY motion complete")
 
         asyncio.run(self.drive_z.move(target_z))
-        logging.info("Drive Z motion complete")
+        logging.info("Z motion complete")
 
 
     def terminate(self):
