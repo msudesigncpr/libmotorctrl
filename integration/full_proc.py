@@ -9,7 +9,7 @@ from libmotorctrl import DriveOverseer, DriveTarget
 
 LOGLEVEL = logging.INFO
 
-STERILIZER_COORDINATES = (461_330, 87_950, 60_000) # Micrometers  # TODO
+STERILIZER_COORDINATES = (461_330, 87_950, 60_000)  # Micrometers  # TODO
 PETRI_DISH_DEPTH = 80_000  # Micrometers # TODO Check depth
 WELL_DEPTH = 80_000  # Micrometers # TODO Check depth
 CAMERA_POS_OFFSET = 20  # Micrometers # TODO Find real value
@@ -24,9 +24,9 @@ logging.basicConfig(
 
 @dataclass
 class PetriDish:
-   id: int
-   x: int
-   y: int
+    id: int
+    x: int
+    y: int
 
 
 @dataclass
@@ -48,12 +48,12 @@ class Colony:
 
 
 PETRI_DISH_COORDINATES = [
-   PetriDish(id=1, x=2600, y=-2460),
-   PetriDish(id=2, x=7100, y=-2460),
-   PetriDish(id=3, x=11600, y=-2460),
-   PetriDish(id=4, x=16100, y=-2460),
-   PetriDish(id=5, x=2600, y=2290),
-   PetriDish(id=6, x=7100, y=2290),
+    PetriDish(id=1, x=2600, y=-2460),
+    PetriDish(id=2, x=7100, y=-2460),
+    PetriDish(id=3, x=11600, y=-2460),
+    PetriDish(id=4, x=16100, y=-2460),
+    PetriDish(id=5, x=2600, y=2290),
+    PetriDish(id=6, x=7100, y=2290),
 ]
 
 WELLS = [
@@ -175,10 +175,10 @@ def main():
     for i in range(dish_count):
         logging.info(f"Moving to dish {i}...")
         drive_ctrl.move(
-                PETRI_DISH_COORDINATES[i].x - CAMERA_POS_OFFSET,
-                PETRI_DISH_COORDINATES[i].y,
-                60_000,
-                )  # TODO Check depth
+            PETRI_DISH_COORDINATES[i].x - CAMERA_POS_OFFSET,
+            PETRI_DISH_COORDINATES[i].y,
+            60_000,
+        )  # TODO Check depth
     # captureImage()
 
     colony_file = open("colony_list.txt", "r")
@@ -186,7 +186,15 @@ def main():
 
     valid_colonies = []
     for colony in valid_colonies_raw:
-        valid_colonies.append(Colony(dish=colony[0], x=colony[1], y=colony[2], width=colony[3], height=colony[4]))
+        valid_colonies.append(
+            Colony(
+                dish=colony[0],
+                x=colony[1],
+                y=colony[2],
+                width=colony[3],
+                height=colony[4],
+            )
+        )
 
     # valid_colonies = [
     #     Colony(dish=1, x=2659, y=2570, width=24, height=24),
@@ -223,10 +231,14 @@ def main():
         if well_target is None:
             logging.error("No unused wells!")  # TODO Handle differently
             sys.exit(1)
-        drive_ctrl.move(int(colony.x * 10**3), int(colony.y * 10**3), PETRI_DISH_DEPTH)
+        drive_ctrl.move(
+            int(colony.x * 10**3), int(colony.y * 10**3), PETRI_DISH_DEPTH
+        )
         logging.info("Colony collected, moving to well...")
         # _ = input("Press any key to continue...")
-        drive_ctrl.move(int(well_target.x * 10**3), int(well_target.y * 10**3), WELL_DEPTH)
+        drive_ctrl.move(
+            int(well_target.x * 10**3), int(well_target.y * 10**3), WELL_DEPTH
+        )
         logging.info("Well reached, moving to sterilizer...")
         well_target.has_sample = True
         well_target.origin = colony.dish
@@ -243,7 +255,7 @@ def main():
     drive_ctrl.move(490_000, -90_000, 0)
     drive_ctrl.terminate()
 
-    with open('well_locations.csv', 'w', newline='') as csvfile:
+    with open("well_locations.csv", "w", newline="") as csvfile:
         csvwriter = csv.writer(csvfile, quoting=csv.QUOTE_MINIMAL)
         csvwriter.writerow(["Well", "Origin Petri Dish"])
         for well in WELLS:

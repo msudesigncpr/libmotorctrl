@@ -218,7 +218,7 @@ class Drive:
         self.drive_move_event.set()
 
     def get_encoder_position(self):
-        return self.reg_status.setpoint # TODO
+        return self.reg_status.setpoint  # TODO
 
     def terminate(self):
         self.reg_control.drive_enabled = False
@@ -274,7 +274,9 @@ class Drive:
             # Drive actual velocity (%)
             self.reg_status.velocity_percent = int(result.registers[1] & 0xFFFF)
             # Drive actual position (sinc)
-            self.reg_status.position = int((result.registers[2] << 16) + result.registers[3])
+            self.reg_status.position = int(
+                (result.registers[2] << 16) + result.registers[3]
+            )
 
             logging.debug("Parsed device register state is %s", self.reg_status)
 
@@ -320,7 +322,7 @@ class Drive:
         time.sleep(0.1)
 
     def get_pos_mm(self):
-        return (self.reg_status.position * 7.93)
+        return self.reg_status.position * 7.93
         # TODO Find constant formula
 
     def stop(self):

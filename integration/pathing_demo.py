@@ -8,7 +8,7 @@ from libmotorctrl import DriveOverseer, DriveTarget
 
 LOGLEVEL = logging.INFO
 
-STERILIZER_COORDINATES = (461_330, 87_950, 60_000) # Micrometers  # TODO
+STERILIZER_COORDINATES = (461_330, 87_950, 60_000)  # Micrometers  # TODO
 PETRI_DISH_DEPTH = 80_000  # Micrometers # TODO Check depth
 WELL_DEPTH = 80_000  # Micrometers # TODO Check depth
 
@@ -179,9 +179,13 @@ def main():
         if well_target is None:
             logging.error("No unused wells!")  # TODO Handle differently
             sys.exit(1)
-        drive_ctrl.move(int(colony.x * 10**3), int(colony.y * 10**3), PETRI_DISH_DEPTH)
+        drive_ctrl.move(
+            int(colony.x * 10**3), int(colony.y * 10**3), PETRI_DISH_DEPTH
+        )
         logging.info("Colony collected, moving to well...")
-        drive_ctrl.move(int(well_target.x * 10**3), int(well_target.y * 10**3), WELL_DEPTH)
+        drive_ctrl.move(
+            int(well_target.x * 10**3), int(well_target.y * 10**3), WELL_DEPTH
+        )
         logging.info("Well reached, moving to sterilizer...")
         well_target.has_sample = True
         well_target.origin = colony.dish

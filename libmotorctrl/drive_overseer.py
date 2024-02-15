@@ -10,7 +10,8 @@ from .drive import Drive
 
 CRUISE_DEPTH = 20_000
 
-CALIBRATION_OFFSET=(0, 90_000) # Micrometers # TODO Get this from calibration
+CALIBRATION_OFFSET = (0, 90_000)  # Micrometers # TODO Get this from calibration
+
 
 class DriveTarget(Enum):
     DriveX = 0
@@ -67,7 +68,6 @@ class DriveOverseer:
 
         asyncio.run(self.drive_z.move(target_z))
         logging.info("Z motion complete")
-
 
     def terminate(self):
         self.drive_x.terminate()
