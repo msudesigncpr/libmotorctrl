@@ -147,8 +147,8 @@ def main():
 
     # TODO Error propagation
 
-    colony_file = open("colony_list.txt", "r")
-    RAW_VALID_COLONIES = json.loads(colony_file.read())
+    with open("data.json", "r") as colony_file:
+        RAW_VALID_COLONIES = json.load(colony_file)
 
     target_colonies = []
     for colony in RAW_VALID_COLONIES:
