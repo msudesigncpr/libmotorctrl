@@ -11,21 +11,12 @@ LOGLEVEL = logging.INFO
 STERILIZER_COORDINATES = (461_330, 87_950, 60_000) # Micrometers  # TODO
 PETRI_DISH_DEPTH = 80_000  # Micrometers # TODO Check depth
 WELL_DEPTH = 80_000  # Micrometers # TODO Check depth
-# CAMERA_POS_OFFSET = 20  # Micrometers # TODO Find real value
-# This is the offset of the camera from the picker head
 
 logging.basicConfig(
     format="%(asctime)s: %(threadName)s: %(message)s",
     level=LOGLEVEL,
     datefmt="%H:%M:%S",
 )
-
-
-# @dataclass
-# class PetriDish:
-#     id: int
-#     x: int
-#     y: int
 
 
 @dataclass
@@ -42,18 +33,7 @@ class Colony:
     dish: str
     x: float
     y: float
-    width: float
-    height: float
 
-
-# PETRI_DISH_COORDINATES = [
-#     PetriDish(id=1, x=2600, y=-2460),
-#     PetriDish(id=2, x=7100, y=-2460),
-#     PetriDish(id=3, x=11600, y=-2460),
-#     PetriDish(id=4, x=16100, y=-2460),
-#     PetriDish(id=5, x=2600, y=2290),
-#     PetriDish(id=6, x=7100, y=2290),
-# ]
 
 WELLS = [
     Well(id="A1", x=267.79, y=31.08, has_sample=False, origin=None),
@@ -156,10 +136,7 @@ WELLS = [
 
 
 def main():
-    dish_count = 4  # TODO Read in
-    # num_colonies_to_sample = 96  # TODO Read in
     dwell_duration = 5
-    # TODO User input setup
 
     logging.info("Initializing drives...")
 
@@ -170,36 +147,12 @@ def main():
 
     # TODO Error propagation
 
-    # logging.info("Collecting dish images...")
-    # for i in range(dish_count):
-    #    logging.info(f"Moving to dish {i}...")
-    #    drive_ctrl.move(
-    #        PETRI_DISH_COORDINATES[i].x - CAMERA_POS_OFFSET,
-    #        PETRI_DISH_COORDINATES[i].y,
-    #        60_000,
-    #    )  # TODO Check depth
-    #    # captureImage()
-
     colony_file = open("colony_list.txt", "r")
     RAW_VALID_COLONIES = json.loads(colony_file.read())
-    # [42.471344, 8.382924], [43.456255999999996, 7.189296], [43.444704,
-    # 3.926988], [41.637488, 5.545824], [39.339232, 6.281604]]
 
-    VALID_COLONIES = []
+    target_colonies = []
     for colony in RAW_VALID_COLONIES:
-        VALID_COLONIES.append(Colony(dish="P0", x=colony[0], y=colony[1], width=0, height=0))
-        # TODO Values we don't know
-
-    # TODO Parse text file containing colony coordinates
-    # VALID_COLONIES = [
-    #     Colony(dish=1, x=2659, y=2570, width=24, height=24),
-    # ]
-
-    # if len(VALID_COLONIES) > num_colonies_to_sample:
-    #     target_colonies = random.sample(VALID_COLONIES, num_colonies_to_sample)
-    # else:
-    #     target_colonies = VALID_COLONIES
-    target_colonies = VALID_COLONIES
+        target_colonies.append(Colony(dish="P0", x=colony[0], y=colony[1]))
 
     logging.info("Target colonies list acquired!")
 
@@ -228,12 +181,10 @@ def main():
             sys.exit(1)
         drive_ctrl.move(int(colony.x * 10**3), int(colony.y * 10**3), PETRI_DISH_DEPTH)
         logging.info("Colony collected, moving to well...")
-        # _ = input("Press any key to continue...")
         drive_ctrl.move(int(well_target.x * 10**3), int(well_target.y * 10**3), WELL_DEPTH)
         logging.info("Well reached, moving to sterilizer...")
         well_target.has_sample = True
         well_target.origin = colony.dish
-        # _ = input("Press any key to continue...")
         drive_ctrl.move(
             STERILIZER_COORDINATES[0],
             STERILIZER_COORDINATES[1],
@@ -245,13 +196,6 @@ def main():
     logging.info("Sampling complete!")
     drive_ctrl.move(490_000, -90_000, 0)
     drive_ctrl.terminate()
-
-    with open('well_locations.csv', 'w', newline='') as csvfile:
-        csvwriter = csv.writer(csvfile, quoting=csv.QUOTE_MINIMAL)
-        csvwriter.writerow(["Well", "Origin Petri Dish"])
-        for well in WELLS:
-            if well.origin is not None:
-                csvwriter.writerow([well.id, well.origin])
 
 
 if __name__ == "__main__":
