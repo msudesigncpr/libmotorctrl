@@ -1,4 +1,5 @@
 import csv
+import json
 import logging
 import sys
 import time
@@ -179,7 +180,8 @@ def main():
     #    )  # TODO Check depth
     #    # captureImage()
 
-    RAW_VALID_COLONIES = [[7.220832, 9.023868], [8.166016, 3.640896]]
+    colony_file = open("colony_list.txt", "r")
+    RAW_VALID_COLONIES = json.loads(colony_file.read())
     # [42.471344, 8.382924], [43.456255999999996, 7.189296], [43.444704,
     # 3.926988], [41.637488, 5.545824], [39.339232, 6.281604]]
 
@@ -246,10 +248,10 @@ def main():
 
     with open('well_locations.csv', 'w', newline='') as csvfile:
         csvwriter = csv.writer(csvfile, quoting=csv.QUOTE_MINIMAL)
-        csvwriter.writerow([ "Well", "Origin Petri Dish" ])
+        csvwriter.writerow(["Well", "Origin Petri Dish"])
         for well in WELLS:
             if well.origin is not None:
-                csvwriter.writerow([ well.id, well.origin ])
+                csvwriter.writerow([well.id, well.origin])
 
 
 if __name__ == "__main__":
