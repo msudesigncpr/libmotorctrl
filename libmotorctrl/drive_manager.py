@@ -11,13 +11,15 @@ from .drive import Drive
 # TODO Refactor parse/write
 
 CRUISE_DEPTH = 20_000
-"""A safe depth for the z-axis to descend to where it cannot collide with any obstacles.
+"""A safe depth for the z-axis to descend to where it cannot collide with any
+obstacles.
 
 The z-axis will be moved to this height when executing movement commands before
 adjusting the x and y-axes. Specified in micrometers."""
 
 CALIBRATION_OFFSET = (0, 90_000)  # TODO Get this from calibration
-"""The location of the calibration point in (x,y) format.
+"""The location of the calibration point in (x,y) format. Specified in
+micrometers.
 
 This is applied as an offset to all movement commands, before the coordinates
 are sent to their respective drive controllers."""

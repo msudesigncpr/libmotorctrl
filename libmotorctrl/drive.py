@@ -13,6 +13,7 @@ logging.getLogger("pymodbus").setLevel(logging.WARNING)
 # device profile FHPP datasheet and directly correspond with register values
 # specified on the pages referenced below.
 
+
 class OpMode(IntEnum):
     # See page 42, Table 5.14, B6-B7
     # See page 46, Table 5.21, B6-B7
@@ -37,11 +38,13 @@ class ControlMode(IntEnum):
     SPEED = 0b10
     RESERVED = 0b11
 
+
 # The CMMO-ST drive constrollers have separate control registers (write-only)
 # and status registers (read-only). They are subtly different. Consult section
 # 5.4 of the CMMO-ST FHPP datasheet for details on the mapping.
 
 # The classes defined below contain the full contents of these registers.
+
 
 @dataclass(slots=True)
 class ControlRegisters:
@@ -111,6 +114,7 @@ class Drive:
 
     The worker thread is defined by the `worker()` method.
     """
+
     def __init__(self, name, ip_addr):
         self.name = name
         self.ip_addr = ip_addr
