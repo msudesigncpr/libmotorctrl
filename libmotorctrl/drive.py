@@ -104,7 +104,7 @@ class StatusRegisters:
 
 
 class Drive:
-    """Object represeting an active drive controller.
+    """Object representing an active drive controller.
 
     A worker thread is spawned for each drive controller to continually
     read/write the registers values (from the `ControlRegisters` and
