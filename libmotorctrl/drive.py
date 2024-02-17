@@ -7,6 +7,8 @@ from enum import IntEnum
 from dataclasses import dataclass
 import asyncio
 
+logging.getLogger("pymodbus").setLevel(logging.WARNING)
+
 
 class OpMode(IntEnum):
     RECSELECT = 0b0000
@@ -154,59 +156,56 @@ class Drive:
 
     # TODO If there is an error, we need to stop movement
 
-    def initialize(self):
-        self.drive_init_event = threading.Event()  # To alert main thread
-        time.sleep(0.2)
+    async def initialize_reg(self):
+        await asyncio.sleep(0.2)
 
         logging.debug("Enabling drive...")
         self.reg_control.drive_enabled = True
-        time.sleep(0.2)
+        await asyncio.sleep(0.2)
 
         logging.debug("Disabling stop...")
         self.reg_control.operation_enabled = True
-        time.sleep(0.2)
+        await asyncio.sleep(0.2)
 
         logging.debug("Disabling halt...")
         self.reg_control.halt_active = False
-        time.sleep(0.2)
+        await asyncio.sleep(0.2)
 
         logging.debug("Disabling brake...")
         self.reg_control.brake_active = False
-        time.sleep(0.2)
+        await asyncio.sleep(0.2)
 
         logging.debug("Clearing faults...")
         self.reg_control.reset = True
-        time.sleep(0.2)
+        await asyncio.sleep(0.2)
 
         logging.debug("De-asserting reset...")
         self.reg_control.reset = False
-        time.sleep(0.2)
+        await asyncio.sleep(0.2)
 
         logging.debug("Setting operation mode to direct application...")
         self.reg_control.operation_mode = OpMode.DIRECTAPP
         self.reg_control.preselection = 100
-        time.sleep(0.2)
-        self.drive_init_event.set()
+        await asyncio.sleep(0.2)
 
-    def home(self):
-        self.drive_home_event = threading.Event()
+        logging.info(f"Drive {self.name} initialized")
+
+    async def home(self):
         logging.debug("Starting homing...")
         self.reg_control.homing_start = True
-        time.sleep(0.2)
+        await asyncio.sleep(0.2)
         self.reg_control.homing_start = False
-        time.sleep(0.4)
+        await asyncio.sleep(0.4)
 
         while not self.reg_status.motion_complete:
-            time.sleep(0.1)
-        logging.debug("Drive homing complete!")
-        self.drive_home_event.set()
+            await asyncio.sleep(0.1)
+        logging.info(f"Drive {self.name} homing complete")
 
     async def move(self, target):
-        self.drive_move_event = threading.Event()
         self.reg_control.setpoint = target
         await asyncio.sleep(0.2)
 
-        logging.debug("Starting motion...")
+        logging.debug(f"{self.name}: Setpoint is {self.reg_control.setpoint}")
         self.reg_control.positioning_start = True
         await asyncio.sleep(0.4)
         self.reg_control.positioning_start = False
@@ -214,21 +213,22 @@ class Drive:
 
         while not self.reg_status.motion_complete:
             await asyncio.sleep(0.1)
-        logging.debug("Drive positioning complete!")
-        self.drive_move_event.set()
+            logging.debug(f"{self.name}: Waiting for motion to complete...")
+
+        logging.debug(f"{self.name}: Drive positioning complete!")
 
     def get_encoder_position(self):
         return self.reg_status.setpoint  # TODO
 
-    def terminate(self):
+    async def terminate(self):
         self.reg_control.drive_enabled = False
         self.reg_control.operation_enabled = False
         self.reg_control.halt_active = True
         self.reg_control.brake_active = True
         self.reg_control.reset = True
-        time.sleep(0.4)
+        await asyncio.sleep(0.4)
         self.terminated = True
-        time.sleep(0.2)
+        await asyncio.sleep(0.2)
         self.write_worker.join()
         self.client.close()
 
@@ -325,9 +325,9 @@ class Drive:
         return self.reg_status.position * 7.93
         # TODO Find constant formula
 
-    def stop(self):
-        self.reg_control.halt = True
-        # TODO Test this
+    async def stop(self):
+        self.reg_control.halt_active = True
+        await asyncio.sleep(0.2)
 
     def worker(self):
         logging.debug("Worker started")
