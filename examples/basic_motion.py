@@ -14,31 +14,32 @@ logging.basicConfig(
 async def main():
     drive_ctrl = DriveOverseer()
     await drive_ctrl.init_drives()
+    logging.info("Drives initialized")
+
     await drive_ctrl.home(DriveTarget.DriveZ)
     await drive_ctrl.home(DriveTarget.DriveX)
     await drive_ctrl.home(DriveTarget.DriveY)
-
-    print("HOMING COMPLETE")
+    logging.info("Homing complete")
 
     logging.info("Motion start!")
     asyncio.create_task(drive_ctrl.move(150_000, 0, 0))
     await asyncio.sleep(2.5)
-    # logging.info("STOP!")
-    # await drive_ctrl.stop()
-    # print("MOTION 1 COMPLETE")
-    # # await drive_ctrl.move(147_000, 0, 60_000)
-    # _ = input()
-    # print("MOTION 2 COMPLETE")
-    # await drive_ctrl.move(347_000, 100_000, 0_000)
-    # print("MOTION 3 COMPLETE")
-    # await drive_ctrl.move(150_000, 0, 0)
-    # print("MOTION 4 COMPLETE")
-    # await drive_ctrl.move(0, 0, 0)
-    # print("MOTION 5 COMPLETE")
-    await drive_ctrl.move(450_000, 0, 0)
-    print("MOTION 6 COMPLETE")
+    logging.info("Motion 1 complete")
 
+    await drive_ctrl.move(147_000, 0, 60_000)
+    logging.info("Motion 2 complete")
+    await drive_ctrl.move(347_000, 100_000, 0_000)
+    logging.info("Motion 3 complete")
+    await drive_ctrl.move(150_000, 0, 0)
+    logging.info("Motion 4 complete")
+    await drive_ctrl.move(0, 0, 0)
+    logging.info("Motion 5 complete")
+    await drive_ctrl.move(450_000, 0, 0)
+    logging.info("Motion 6 complete")
+
+    logging.info("Shutting down...")
     await drive_ctrl.terminate()
+    logging.info("Drive connections terminated")
 
 
 if __name__ == "__main__":
