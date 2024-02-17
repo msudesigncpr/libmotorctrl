@@ -26,7 +26,7 @@ jobs:
           pip install pdoc
 
       - name: Generate documentation
-        run: pdoc -o docs libmotorctrl/drive_overseer.py
+        run: pdoc -o docs libmotorctrl/drive_manager.py
 
       - uses: actions/upload-pages-artifact@v3
         with:

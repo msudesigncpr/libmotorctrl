@@ -23,7 +23,7 @@ class DriveTarget(Enum):
     DriveZ = 2
 
 
-class DriveOverseer:
+class DriveManager:
     def __init__(self):
         """Initialize the drives.
 
