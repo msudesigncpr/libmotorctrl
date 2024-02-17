@@ -9,8 +9,13 @@ import asyncio
 
 logging.getLogger("pymodbus").setLevel(logging.WARNING)
 
+# The following enums (and their values) are all derived from the CMMO-ST
+# device profile FHPP datasheet and directly correspond with register values
+# specified on the pages referenced below.
 
 class OpMode(IntEnum):
+    # See page 42, Table 5.14, B6-B7
+    # See page 46, Table 5.21, B6-B7
     RECSELECT = 0b0000
     DIRECTAPP = 0b0001
     RESERVED1 = 0b0010
@@ -18,16 +23,25 @@ class OpMode(IntEnum):
 
 
 class SetpointMode(IntEnum):
+    # See page 44, Table 5.16, B0
+    # See page 48, Table 5.24, B0
     ABSOLUTE = 0
     RELATIVE = 1
 
 
 class ControlMode(IntEnum):
+    # See page 44, Table 5.16, B1-B2
+    # See page 48, Table 5.24, B1-B2
     POSITIONING = 0b00
     POWER = 0b01
     SPEED = 0b10
     RESERVED = 0b11
 
+# The CMMO-ST drive constrollers have separate control registers (write-only)
+# and status registers (read-only). They are subtly different. Consult section
+# 5.4 of the CMMO-ST FHPP datasheet for details on the mapping.
+
+# The classes defined below contain the full contents of these registers.
 
 @dataclass(slots=True)
 class ControlRegisters:
@@ -87,6 +101,16 @@ class StatusRegisters:
 
 
 class Drive:
+    """Object represeting an active drive controller.
+
+    A worker thread is spawned for each drive controller to continually
+    read/write the registers values (from the `ControlRegisters` and
+    `StatusRegisters` classes defined above). The methods within this class
+    operate by updating the internal `ControlRegisters` object, then waiting
+    for the worker thread to write the register values out to the controller.
+
+    The worker thread is defined by the `worker()` method.
+    """
     def __init__(self, name, ip_addr):
         self.name = name
         self.ip_addr = ip_addr
