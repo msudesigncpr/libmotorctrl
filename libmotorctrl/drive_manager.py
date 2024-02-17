@@ -127,8 +127,8 @@ class DriveManager:
     async def stop_drive(self, drive: DriveTarget):
         """Immediately stop the specified drive.
 
-        This sets the halt bit on all drives, and they will need to be reset
-        before they can be moved again."""
+        This sets the halt bit on the drive, and the drive will need to be
+        reset before it can be moved again."""
 
         match drive:
             case DriveTarget.DriveX:
