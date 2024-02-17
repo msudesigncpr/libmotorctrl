@@ -1,5 +1,4 @@
 import asyncio
-import concurrent.futures
 import logging
 from enum import Enum
 from .drive import Drive
