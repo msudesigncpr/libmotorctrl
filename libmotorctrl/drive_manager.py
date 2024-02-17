@@ -64,11 +64,11 @@ class DriveManager:
         self._drive_z = Drive("Z", "192.168.2.23")
 
     async def init_drives(self):
-        """Initializes the drive registers to prepare them for positioning.
+        """Initialize the drive registers to prepare them for positioning.
 
         On startup, the drives are not configured for motion. We must
-        set a sequence of registers to clear faults, configure the
-        drive for direct positioning, and enable movement."""
+        set a sequence of registers to clear faults, configure each drive for
+        direct positioning, and enable movement."""
 
         async with asyncio.TaskGroup() as init_tg:
             init_tg.create_task(self._drive_x.initialize_reg())
@@ -76,8 +76,8 @@ class DriveManager:
             init_tg.create_task(self._drive_z.initialize_reg())
         logging.info("All drives initialized")
 
-    async def home(self, drive):
-        """Homes the targeted drive.
+    async def home(self, drive: DriveTarget):
+        """Home the targeted drive.
 
         This method homes the target drive. It is probably desirable
         to home the z-axis drive first to avoid colliding with
@@ -91,7 +91,7 @@ class DriveManager:
             case DriveTarget.DriveZ:
                 await self._drive_z.home()
 
-    async def move(self, target_x, target_y, target_z):
+    async def move(self, target_x: int, target_y: int, target_z: int):
         """Move to the designated coordinates.
 
         Coordinates must be provided as um integer offsets from the
@@ -122,7 +122,7 @@ class DriveManager:
             stop_tg.create_task(self._drive_y.stop())
             stop_tg.create_task(self._drive_z.stop())
 
-    async def stop_drive(self, drive):
+    async def stop_drive(self, drive: DriveTarget):
         """Immediately stop the specified drive.
 
         This sets the halt bit on all drives, and they will need to be reset
@@ -137,7 +137,7 @@ class DriveManager:
                 await self._drive_z.stop()
 
     async def terminate(self):
-        """Disable a drive and terminate the Modbus connection."""
+        """Disable all drives and terminate the Modbus connections."""
 
         async with asyncio.TaskGroup() as term_tg:
             term_tg.create_task(self._drive_x.terminate())
