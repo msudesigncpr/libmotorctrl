@@ -1,11 +1,11 @@
-import threading
-from pymodbus.client import ModbusTcpClient
+import asyncio
 import logging
+import threading
 import time
 import sys
 from enum import IntEnum
 from dataclasses import dataclass
-import asyncio
+from pymodbus.client import ModbusTcpClient
 
 logging.getLogger("pymodbus").setLevel(logging.WARNING)
 
@@ -216,7 +216,7 @@ class Drive:
         self.reg_control.preselection = 100
         await asyncio.sleep(0.2)
 
-        logging.info(f"Drive {self.name} initialized")
+        logging.info("Drive %s initialized", self.name)
 
     async def home(self):
         logging.debug("Starting homing...")
@@ -227,13 +227,13 @@ class Drive:
 
         while not self.reg_status.motion_complete:
             await asyncio.sleep(0.1)
-        logging.info(f"Drive {self.name} homing complete")
+        logging.info("Drive %s homing complete", self.name)
 
     async def move(self, target):
         self.reg_control.setpoint = target
         await asyncio.sleep(0.2)
 
-        logging.debug(f"{self.name}: Setpoint is {self.reg_control.setpoint}")
+        logging.debug("%s: Setpoint is %s", self.name, self.reg_control.setpoint)
         self.reg_control.positioning_start = True
         await asyncio.sleep(0.4)
         self.reg_control.positioning_start = False
@@ -241,12 +241,9 @@ class Drive:
 
         while not self.reg_status.motion_complete:
             await asyncio.sleep(0.1)
-            logging.debug(f"{self.name}: Waiting for motion to complete...")
+            logging.debug("%s: Waiting for motion to complete...", self.name)
 
-        logging.debug(f"{self.name}: Drive positioning complete!")
-
-    def get_encoder_position(self):
-        return self.reg_status.setpoint  # TODO
+        logging.debug("%s: Drive positioning complete!", self.name)
 
     async def terminate(self):
         self.reg_control.drive_enabled = False
