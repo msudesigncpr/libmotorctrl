@@ -1,6 +1,6 @@
 import asyncio
 import logging
-from libmotorctrl import DriveOverseer, DriveTarget
+from libmotorctrl import DriveManager, DriveTarget
 
 LOGLEVEL = logging.INFO
 
@@ -12,7 +12,7 @@ logging.basicConfig(
 
 
 async def main():
-    drive_ctrl = DriveOverseer()
+    drive_ctrl = DriveManager()
     await drive_ctrl.init_drives()
     logging.info("Drives initialized")
 
@@ -22,20 +22,19 @@ async def main():
     logging.info("Homing complete")
 
     logging.info("Motion start!")
-    asyncio.create_task(drive_ctrl.move(150_000, 0, 0))
+    task = asyncio.create_task(drive_ctrl.move(150_000, 0, 0))
     await asyncio.sleep(2.5)
+    logging.info("Done sleeping")
+    await task
     logging.info("Motion 1 complete")
-
-    await drive_ctrl.move(147_000, 0, 60_000)
+    await drive_ctrl.move(347_000, 100_000, 60_000)
     logging.info("Motion 2 complete")
-    await drive_ctrl.move(347_000, 100_000, 0_000)
+    await drive_ctrl.move(150_000, 0, 60_000)
     logging.info("Motion 3 complete")
-    await drive_ctrl.move(150_000, 0, 0)
+    await drive_ctrl.move(0, 0, 60_000)
     logging.info("Motion 4 complete")
-    await drive_ctrl.move(0, 0, 0)
+    await drive_ctrl.move(450_000, -90_000, 0)
     logging.info("Motion 5 complete")
-    await drive_ctrl.move(450_000, 0, 0)
-    logging.info("Motion 6 complete")
 
     logging.info("Shutting down...")
     await drive_ctrl.terminate()

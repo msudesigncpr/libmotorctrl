@@ -1,25 +1,16 @@
-import csv
-import json
-import logging
-import random
-import sys
-import time
 from dataclasses import dataclass
-from libmotorctrl import DriveOverseer, DriveTarget
-
-LOGLEVEL = logging.INFO
 
 STERILIZER_COORDINATES = (461_330, 87_950, 60_000)  # Micrometers  # TODO
 PETRI_DISH_DEPTH = 80_000  # Micrometers # TODO Check depth
 WELL_DEPTH = 80_000  # Micrometers # TODO Check depth
 CAMERA_POS_OFFSET = 20  # Micrometers # TODO Find real value
-# This is the offset of the camera from the picker head
 
-logging.basicConfig(
-    format="%(asctime)s: %(threadName)s: %(message)s",
-    level=LOGLEVEL,
-    datefmt="%H:%M:%S",
-)
+
+@dataclass
+class Colony:
+    dish: str
+    x: float
+    y: float
 
 
 @dataclass
@@ -38,16 +29,7 @@ class Well:
     origin: str
 
 
-@dataclass
-class Colony:
-    dish: str
-    x: float
-    y: float
-    width: float
-    height: float
-
-
-PETRI_DISH_COORDINATES = [
+PETRI_DISHS = [
     PetriDish(id=1, x=2600, y=-2460),
     PetriDish(id=2, x=7100, y=-2460),
     PetriDish(id=3, x=11600, y=-2460),
@@ -154,114 +136,3 @@ WELLS = [
     Well(id="H11", x=358.49, y=94.57, has_sample=False, origin=None),
     Well(id="H12", x=367.56, y=94.57, has_sample=False, origin=None),
 ]
-
-
-def main():
-    dish_count = 4  # TODO Read in
-    num_colonies_to_sample = 96  # TODO Read in
-    dwell_duration = 5
-    # TODO User input setup
-
-    logging.info("Initializing drives...")
-
-    drive_ctrl = DriveOverseer()
-    drive_ctrl.home(DriveTarget.DriveZ)
-    drive_ctrl.home(DriveTarget.DriveX)
-    drive_ctrl.home(DriveTarget.DriveY)
-
-    # TODO Error propagation
-
-    logging.info("Collecting dish images...")
-    for i in range(dish_count):
-        logging.info(f"Moving to dish {i}...")
-        drive_ctrl.move(
-            PETRI_DISH_COORDINATES[i].x - CAMERA_POS_OFFSET,
-            PETRI_DISH_COORDINATES[i].y,
-            60_000,
-        )  # TODO Check depth
-    # captureImage()
-
-    colony_file = open("colony_list.txt", "r")
-    valid_colonies_raw = json.loads(colony_file.read())
-
-    valid_colonies = []
-    for colony in valid_colonies_raw:
-        valid_colonies.append(
-            Colony(
-                dish=colony[0],
-                x=colony[1],
-                y=colony[2],
-                width=colony[3],
-                height=colony[4],
-            )
-        )
-
-    # valid_colonies = [
-    #     Colony(dish=1, x=2659, y=2570, width=24, height=24),
-    # ]
-
-    if len(valid_colonies) > num_colonies_to_sample:
-        target_colonies = random.sample(valid_colonies, num_colonies_to_sample)
-    else:
-        target_colonies = valid_colonies
-    target_colonies = valid_colonies
-
-    logging.info("Target colonies list acquired!")
-
-    logging.info("Performing initial sterilization...")
-    drive_ctrl.move(
-        STERILIZER_COORDINATES[0],
-        STERILIZER_COORDINATES[1],
-        STERILIZER_COORDINATES[2],
-    )
-    logging.info(f"Sleeping for {dwell_duration} seconds...")
-    time.sleep(dwell_duration)
-
-    for colony in target_colonies:
-        logging.info("Starting sampling cycle...")
-        logging.info(
-            f"Target colony is at {colony.x:.2f}, {colony.y:.2f} in Petri dish {colony.dish}"
-        )
-        well_target = None
-        for well_candidate in WELLS:
-            if not well_candidate.has_sample:
-                well_target = well_candidate
-                logging.info(f"Target well is {well_target.id}")
-                break
-        if well_target is None:
-            logging.error("No unused wells!")  # TODO Handle differently
-            sys.exit(1)
-        drive_ctrl.move(
-            int(colony.x * 10**3), int(colony.y * 10**3), PETRI_DISH_DEPTH
-        )
-        logging.info("Colony collected, moving to well...")
-        # _ = input("Press any key to continue...")
-        drive_ctrl.move(
-            int(well_target.x * 10**3), int(well_target.y * 10**3), WELL_DEPTH
-        )
-        logging.info("Well reached, moving to sterilizer...")
-        well_target.has_sample = True
-        well_target.origin = colony.dish
-        # _ = input("Press any key to continue...")
-        drive_ctrl.move(
-            STERILIZER_COORDINATES[0],
-            STERILIZER_COORDINATES[1],
-            STERILIZER_COORDINATES[2],
-        )
-        logging.info(f"Sleeping for {dwell_duration} seconds...")
-        time.sleep(dwell_duration)
-
-    logging.info("Sampling complete!")
-    drive_ctrl.move(490_000, -90_000, 0)
-    drive_ctrl.terminate()
-
-    with open("well_locations.csv", "w", newline="") as csvfile:
-        csvwriter = csv.writer(csvfile, quoting=csv.QUOTE_MINIMAL)
-        csvwriter.writerow(["Well", "Origin Petri Dish"])
-        for well in WELLS:
-            if well.origin is not None:
-                csvwriter.writerow([well.id, well.origin])
-
-
-if __name__ == "__main__":
-    main()
