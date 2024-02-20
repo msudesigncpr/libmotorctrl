@@ -8,6 +8,42 @@ from pymodbus.client import ModbusTcpClient
 
 logging.getLogger("pymodbus").setLevel(logging.WARNING)
 
+
+class DriveState(Enum):
+    """The status of the drive controller."""
+
+    READY = 0
+    """Drive has no faults or warnings and is ready for movement."""
+    WARN = 1
+    """There are no error present, but there is a warning. The drive
+    may or may not still be able to move."""
+    ERROR = 2
+    """An error is present. The drive will not move."""
+    NOHOME = 3
+    """Drive has no faults or warnings, but has no homing reference set."""
+    HALT = 4
+    """Drive operation is enabled, but the halt bit is set, disabling the drive."""
+    DISABLED = 99
+    """Drive operation is not enabled."""
+
+
+class DriveActionError(Exception):
+    """An error raised by a drive interface method."""
+
+    pass
+
+
+class DriveError:
+    """An error code and description read from the drive controller.
+
+    Error codes and descriptions are from the CMMO-ST FHPP datasheet,
+    Appendix D."""
+
+    def __init__(self, error_code: int, error_desc: str):
+        self.error_code = error_code
+        self.error_desc = error_desc
+
+
 # The `OpMode`, `SetpointMode` and `ControlMode` enums (and their
 # values) are all derived from the CMMO-ST device profile FHPP
 # datasheet and directly correspond with register values specified on
@@ -43,41 +79,6 @@ class ControlMode(IntEnum):
     POWER = 0b01
     SPEED = 0b10
     RESERVED = 0b11
-
-
-class DriveState(Enum):
-    """The status of the drive controller."""
-
-    READY = 0
-    """Drive has no faults or warnings and is ready for movement."""
-    WARN = 1
-    """There are no error present, but there is a warning. The drive
-    may or may not still be able to move."""
-    ERROR = 2
-    """An error is present. The drive will not move."""
-    NOHOME = 3
-    """Drive has no faults or warnings, but has no homing reference set."""
-    HALT = 4
-    """Drive operation is enabled, but the halt bit is set, disabling the drive."""
-    DISABLED = 99
-    """Drive operation is not enabled."""
-
-
-class DriveActionError(Exception):
-    """An error raised by a drive interface method."""
-
-    pass
-
-
-class DriveError:
-    """An error code and description read from the drive controller.
-
-    Error codes and descriptions are from the CMMO-ST FHPP datasheet,
-    Appendix D."""
-
-    def __init__(self, error_code: int, error_desc: str):
-        self.error_code = error_code
-        self.error_desc = error_desc
 
 
 # The CMMO-ST drive constrollers have separate control registers (write-only)
