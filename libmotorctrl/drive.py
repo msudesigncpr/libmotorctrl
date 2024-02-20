@@ -364,9 +364,6 @@ class Drive:
             logging.error("Modbus write response was an error!")
             raise DriveError("Invalid drive write acknowledge")
 
-        self.reg_read()
-        time.sleep(0.1)
-
     def get_pos_mm(self) -> float:
         return self.reg_status.position * 7.93
         # TODO Find constant formula
