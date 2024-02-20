@@ -8,12 +8,15 @@ from pymodbus.client import ModbusTcpClient
 
 logging.getLogger("pymodbus").setLevel(logging.WARNING)
 
-# The following enums (and their values) are all derived from the CMMO-ST
-# device profile FHPP datasheet and directly correspond with register values
-# specified on the pages referenced below.
+# The `OpMode`, `SetpointMode` and `ControlMode` enums (and their
+# values) are all derived from the CMMO-ST device profile FHPP
+# datasheet and directly correspond with register values specified on
+# the pages referenced below.
 
 
 class OpMode(IntEnum):
+    """@private"""
+
     # See page 42, Table 5.14, B6-B7
     # See page 46, Table 5.21, B6-B7
     RECSELECT = 0b0000
@@ -23,6 +26,8 @@ class OpMode(IntEnum):
 
 
 class SetpointMode(IntEnum):
+    """@private"""
+
     # See page 44, Table 5.16, B0
     # See page 48, Table 5.24, B0
     ABSOLUTE = 0
@@ -30,6 +35,8 @@ class SetpointMode(IntEnum):
 
 
 class ControlMode(IntEnum):
+    """@private"""
+
     # See page 44, Table 5.16, B1-B2
     # See page 48, Table 5.24, B1-B2
     POSITIONING = 0b00
@@ -56,8 +63,21 @@ class DriveState(Enum):
     """Drive operation is not enabled."""
 
 
-class DriveError(Exception):
+class DriveActionError(Exception):
+    """An error raised by a drive interface method."""
+
     pass
+
+
+class DriveError:
+    """An error code and description read from the drive controller.
+
+    Error codes and descriptions are from the CMMO-ST FHPP datasheet,
+    Appendix D."""
+
+    def __init__(self, error_code: int, error_desc: str):
+        self.error_code = error_code
+        self.error_desc = error_desc
 
 
 # The CMMO-ST drive constrollers have separate control registers (write-only)
@@ -69,6 +89,10 @@ class DriveError(Exception):
 
 @dataclass(slots=True)
 class ControlRegisters:
+    """The control registers written to the drive controller.
+
+    @private"""
+
     # CCONT
     drive_enabled: bool
     operation_enabled: bool
@@ -96,6 +120,10 @@ class ControlRegisters:
 
 @dataclass(slots=True)
 class StatusRegisters:
+    """The status registers read from the drive controller.
+
+    @private"""
+
     # SCON
     drive_enabled: bool
     operation_enabled: bool
@@ -134,13 +162,15 @@ class Drive:
     for the worker thread to write the register values out to the controller.
 
     The worker thread is defined by the `worker()` method.
-    """
+
+    @private"""
 
     def __init__(self, name: str, ip_addr: str):
         self.name = name
         self.ip_addr = ip_addr
         self.terminated = False
         self.client = ModbusTcpClient(ip_addr)
+        self.error_code = None
         self.reg_control = ControlRegisters(
             # CCON
             drive_enabled=False,
@@ -262,7 +292,7 @@ class Drive:
             await asyncio.sleep(0.1)
             logging.debug("%s: Waiting for motion to complete...", self.name)
             if self.get_status() == DriveState.ERROR:
-                raise DriveError("Movement aborted!")
+                raise DriveActionError("Movement aborted!")
 
         logging.debug("%s: Drive positioning complete!", self.name)
 
@@ -283,7 +313,7 @@ class Drive:
 
         if result.isError():
             logging.error("Modbus read response was an error!")
-            raise DriveError("Invalid drive response")
+            raise DriveActionError("Invalid drive response")
         else:
             # Parse SCON
             self.reg_status.drive_enabled = bool(((result.registers[0] >> 0) >> 8) & 1)
@@ -362,13 +392,20 @@ class Drive:
         result = self.client.write_registers(0x0, register_out)
         if result.isError():
             logging.error("Modbus write response was an error!")
-            raise DriveError("Invalid drive write acknowledge")
+            raise DriveActionError("Invalid drive write acknowledge")
+
+    def read_exception(self):
+        logging.debug("Reading exception status...")
+        result = self.client.read_exception_status()
+        self.error_code = result.encode()
+        logging.debug("Exception code: %s", self.error_code)
 
     def get_pos_mm(self) -> float:
         return self.reg_status.position * 7.93
         # TODO Find constant formula
 
     def get_status(self) -> DriveState:
+        """Identify the drive state from the status registers."""
         if self.reg_status.fault_present:
             return DriveState.ERROR
         elif self.reg_status.warning_present:
@@ -383,8 +420,30 @@ class Drive:
         else:
             return DriveState.DISABLED
 
+    def get_exception(self) -> DriveError:
+        """Match the drive error to an exception code."""
+
+        # TODO Get the other error messages
+        match self.error_code:
+            case bytes.fromhex("00"):
+                error_desc = "N/A"
+            case bytes.fromhex("01"):
+                error_desc = "Software error"
+            case bytes.fromhex("02"):
+                error_desc = "Default parameter file invalid"
+            case bytes.fromhex("47"):
+                error_desc = "Modbus connection with master control"
+            case _:
+                error_desc = "Unknown error"
+
+        return DriveError(self.error_code, error_desc)
+
     async def stop(self):
         self.reg_control.halt_active = True
+        await asyncio.sleep(0.2)
+
+    async def resume(self):
+        self.reg_control.halt_active = False
         await asyncio.sleep(0.2)
 
     def worker(self):
@@ -393,5 +452,6 @@ class Drive:
             logging.debug("Writing registers...")
             self.reg_write()
             self.reg_read()
+            self.read_exception()  # TODO Only if error?
             time.sleep(0.1)
         logging.debug("Worker exiting...")

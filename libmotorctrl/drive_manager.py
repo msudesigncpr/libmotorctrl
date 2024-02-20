@@ -3,7 +3,7 @@
 import asyncio
 import logging
 from enum import Enum
-from .drive import Drive, DriveState
+from .drive import Drive, DriveState, DriveError
 
 # TODO Add locks
 # TODO Add timeouts to lock acquisition
@@ -116,8 +116,8 @@ class DriveManager:
     async def stop(self):
         """Immediately stop all movement.
 
-        This sets the halt bit on all drives, and they will need to be reset
-        before they can be moved again."""
+        This sets the halt bit on all drives. This can be reversed
+        using the `resume` method."""
 
         async with asyncio.TaskGroup() as stop_tg:
             stop_tg.create_task(self._drive_x.stop())
@@ -127,8 +127,8 @@ class DriveManager:
     async def stop_drive(self, drive: DriveTarget):
         """Immediately stop the specified drive.
 
-        This sets the halt bit on the drive, and the drive will need to be
-        reset before it can be moved again."""
+        This sets the halt bit on the drive. This can be reversed
+        using the `resume_drive` method."""
 
         match drive:
             case DriveTarget.DriveX:
@@ -138,13 +138,32 @@ class DriveManager:
             case DriveTarget.DriveZ:
                 await self._drive_z.stop()
 
+    async def resume(self):
+        """Clear the halt bit on all drives."""
+
+        async with asyncio.TaskGroup() as resume_tg:
+            resume_tg.create_task(self._drive_x.resume())
+            resume_tg.create_task(self._drive_y.resume())
+            resume_tg.create_task(self._drive_z.resume())
+
+    async def resume_drive(self, drive: DriveTarget):
+        """Clear the halt bit on the specified drive."""
+
+        match drive:
+            case DriveTarget.DriveX:
+                await self._drive_x.resume()
+            case DriveTarget.DriveY:
+                await self._drive_y.resume()
+            case DriveTarget.DriveZ:
+                await self._drive_z.resume()
+
     def get_drive_state(self, drive: DriveTarget) -> DriveState:
         """Get the status of a drive.
 
         Note that if the drive state is `DriveState.WARN` the drive
-        may still be capable of movement dependeing on the severity of
-        the warning.
-        """
+        may still be capable of movement depending on the severity of
+        the warning."""
+
         match drive:
             case DriveTarget.DriveX:
                 return self._drive_x.get_status()
@@ -152,6 +171,21 @@ class DriveManager:
                 return self._drive_x.get_status()
             case DriveTarget.DriveZ:
                 return self._drive_x.get_status()
+
+    def get_drive_exception(self, drive: DriveTarget) -> DriveError:
+        """Get the diagnostic code and message from a drive.
+
+        Refer to Appendix D of the CMMO-ST FHPP datasheet for a
+        comprehensive list of error codes and diagnostic messages. If
+        no fault is present, the error code will be 0."""
+
+        match drive:
+            case DriveTarget.DriveX:
+                return self._drive_x.get_exception()
+            case DriveTarget.DriveY:
+                return self._drive_x.get_exception()
+            case DriveTarget.DriveZ:
+                return self._drive_x.get_exception()
 
     async def terminate(self):
         """Disable all drives and terminate the Modbus connections."""
