@@ -179,9 +179,9 @@ class DriveManager:
             case DriveTarget.DriveX:
                 return self._drive_x.get_status()
             case DriveTarget.DriveY:
-                return self._drive_x.get_status()
+                return self._drive_y.get_status()
             case DriveTarget.DriveZ:
-                return self._drive_x.get_status()
+                return self._drive_z.get_status()
 
     def get_drive_exception(self, drive: DriveTarget) -> DriveError:
         """Get the diagnostic code and message from a drive.
@@ -194,9 +194,23 @@ class DriveManager:
             case DriveTarget.DriveX:
                 return self._drive_x.get_exception()
             case DriveTarget.DriveY:
-                return self._drive_x.get_exception()
+                return self._drive_y.get_exception()
             case DriveTarget.DriveZ:
-                return self._drive_x.get_exception()
+                return self._drive_z.get_exception()
+
+    async def reset_drive(self, drive: DriveTarget):
+        """Reset a targeted drive, acknowledging faults.
+
+        Some error messages are acknowledgeable, and can be cleared by
+        toggling the reset bit on the problematic drive controller."""
+
+        match drive:
+            case DriveTarget.DriveX:
+                return self._drive_x.reset_error()
+            case DriveTarget.DriveY:
+                return self._drive_y.reset_error()
+            case DriveTarget.DriveZ:
+                return self._drive_z.reset_error()
 
     async def terminate(self):
         """Disable all drives and terminate the Modbus connections."""

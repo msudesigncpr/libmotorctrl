@@ -445,6 +445,16 @@ class Drive:
         self.reg_control.halt_active = False
         await asyncio.sleep(0.2)
 
+    async def reset_error(self):
+        # This needs more testing
+        logging.debug("Clearing faults...")
+        self.reg_control.reset = True
+        await asyncio.sleep(0.2)
+
+        logging.debug("De-asserting reset...")
+        self.reg_control.reset = False
+        await asyncio.sleep(0.2)
+
     def worker(self):
         logging.debug("Worker started")
         while not self.terminated:
