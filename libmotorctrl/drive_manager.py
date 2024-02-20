@@ -3,7 +3,7 @@
 import asyncio
 import logging
 from enum import Enum
-from .drive import Drive
+from .drive import Drive, DriveState
 
 # TODO Add locks
 # TODO Add timeouts to lock acquisition
@@ -137,6 +137,21 @@ class DriveManager:
                 await self._drive_y.stop()
             case DriveTarget.DriveZ:
                 await self._drive_z.stop()
+
+    def get_drive_state(self, drive: DriveTarget) -> DriveState:
+        """Get the status of a drive.
+
+        Note that if the drive state is `DriveState.WARN` the drive
+        may still be capable of movement dependeing on the severity of
+        the warning.
+        """
+        match drive:
+            case DriveTarget.DriveX:
+                return self._drive_x.get_status()
+            case DriveTarget.DriveY:
+                return self._drive_x.get_status()
+            case DriveTarget.DriveZ:
+                return self._drive_x.get_status()
 
     async def terminate(self):
         """Disable all drives and terminate the Modbus connections."""

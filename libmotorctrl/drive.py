@@ -2,8 +2,7 @@ import asyncio
 import logging
 import threading
 import time
-import sys
-from enum import IntEnum
+from enum import Enum, IntEnum
 from dataclasses import dataclass
 from pymodbus.client import ModbusTcpClient
 
@@ -37,6 +36,28 @@ class ControlMode(IntEnum):
     POWER = 0b01
     SPEED = 0b10
     RESERVED = 0b11
+
+
+class DriveState(Enum):
+    """The status of the drive controller."""
+
+    READY = 0
+    """Drive has no faults or warnings and is ready for movement."""
+    WARN = 1
+    """There are no error present, but there is a warning. The drive
+    may or may not still be able to move."""
+    ERROR = 2
+    """An error is present. The drive will not move."""
+    NOHOME = 3
+    """Drive has no faults or warnings, but has no homing reference set."""
+    HALT = 4
+    """Drive operation is enabled, but the halt bit is set, disabling the drive."""
+    DISABLED = 99
+    """Drive operation is not enabled."""
+
+
+class DriveError(Exception):
+    pass
 
 
 # The CMMO-ST drive constrollers have separate control registers (write-only)
@@ -115,7 +136,7 @@ class Drive:
     The worker thread is defined by the `worker()` method.
     """
 
-    def __init__(self, name, ip_addr):
+    def __init__(self, name: str, ip_addr: str):
         self.name = name
         self.ip_addr = ip_addr
         self.terminated = False
@@ -182,8 +203,6 @@ class Drive:
         logging.debug("Starting write thread...")
         self.write_worker.start()
 
-    # TODO If there is an error, we need to stop movement
-
     async def initialize_reg(self):
         await asyncio.sleep(0.2)
 
@@ -229,7 +248,7 @@ class Drive:
             await asyncio.sleep(0.1)
         logging.info("Drive %s homing complete", self.name)
 
-    async def move(self, target):
+    async def move(self, target: int):
         self.reg_control.setpoint = target
         await asyncio.sleep(0.2)
 
@@ -242,6 +261,8 @@ class Drive:
         while not self.reg_status.motion_complete:
             await asyncio.sleep(0.1)
             logging.debug("%s: Waiting for motion to complete...", self.name)
+            if self.get_status() == DriveState.ERROR:
+                raise DriveError("Movement aborted!")
 
         logging.debug("%s: Drive positioning complete!", self.name)
 
@@ -262,7 +283,7 @@ class Drive:
 
         if result.isError():
             logging.error("Modbus read response was an error!")
-            sys.exit(2)
+            raise DriveError("Invalid drive response")
         else:
             # Parse SCON
             self.reg_status.drive_enabled = bool(((result.registers[0] >> 0) >> 8) & 1)
@@ -341,14 +362,29 @@ class Drive:
         result = self.client.write_registers(0x0, register_out)
         if result.isError():
             logging.error("Modbus write response was an error!")
-            sys.exit(2)
+            raise DriveError("Invalid drive write acknowledge")
 
         self.reg_read()
         time.sleep(0.1)
 
-    def get_pos_mm(self):
+    def get_pos_mm(self) -> float:
         return self.reg_status.position * 7.93
         # TODO Find constant formula
+
+    def get_status(self) -> DriveState:
+        if self.reg_status.fault_present:
+            return DriveState.ERROR
+        elif self.reg_status.warning_present:
+            return DriveState.WARN
+        elif not self.reg_status.reference_set:
+            return DriveState.NOHOME
+        elif self.reg_status.drive_enabled and self.reg_status.operation_enabled:
+            if self.reg_status.halt_active:
+                return DriveState.HALT
+            else:
+                return DriveState.READY
+        else:
+            return DriveState.DISABLED
 
     async def stop(self):
         self.reg_control.halt_active = True
