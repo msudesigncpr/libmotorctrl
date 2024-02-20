@@ -5,17 +5,16 @@ import logging
 from enum import Enum
 from .drive import Drive, DriveState, DriveError
 
-# TODO Add locks
-# TODO Add timeouts to lock acquisition
-# TODO Clamp values
-# TODO Refactor parse/write
+# TODO Add locks for drive actions
+# TODO Clamp position values based on calibration
+# TODO Refactor parse/write to use callbacks
 
 CRUISE_DEPTH = 20_000
 """A safe depth for the z-axis to descend to where it cannot collide with any
-obstacles.
+obstacles. Specified in micrometers.
 
 The z-axis will be moved to this height when executing movement commands before
-adjusting the x and y-axes. Specified in micrometers."""
+adjusting the x and y-axes."""
 
 CALIBRATION_OFFSET = (0, 90_000)  # TODO Get this from calibration
 """The location of the calibration point in (x,y) format. Specified in
@@ -26,7 +25,8 @@ are sent to their respective drive controllers."""
 
 
 class DriveTarget(Enum):
-    """A drive target used for methods which require specifying a target drive."""
+    """A drive target used for methods which require specifying a
+    target drive."""
 
     DriveX = 0
     DriveY = 1
@@ -69,8 +69,8 @@ class DriveManager:
         """Initialize the drive registers to prepare them for positioning.
 
         On startup, the drives are not configured for motion. We must
-        set a sequence of registers to clear faults, configure each drive for
-        direct positioning, and enable movement."""
+        set a sequence of registers to clear faults, configure each
+        drive for direct positioning, and enable movement."""
 
         async with asyncio.TaskGroup() as init_tg:
             init_tg.create_task(self._drive_x.initialize_reg())
@@ -117,7 +117,7 @@ class DriveManager:
         """Immediately stop all movement.
 
         This sets the halt bit on all drives. This can be reversed
-        using the `resume` method."""
+        using the `resume()` method."""
 
         async with asyncio.TaskGroup() as stop_tg:
             stop_tg.create_task(self._drive_x.stop())
@@ -128,7 +128,7 @@ class DriveManager:
         """Immediately stop the specified drive.
 
         This sets the halt bit on the drive. This can be reversed
-        using the `resume_drive` method."""
+        using the `resume_drive()` method."""
 
         match drive:
             case DriveTarget.DriveX:
@@ -156,6 +156,17 @@ class DriveManager:
                 await self._drive_y.resume()
             case DriveTarget.DriveZ:
                 await self._drive_z.resume()
+
+    def get_position(self) -> (float, float, float):
+        """Get the position of the picker-head in millimeters.
+
+        This is measured by the encoders in each drive, and is an
+        offset from the calibration point."""
+
+        x_pos = (self._drive_x.get_encoder_position() - CALIBRATION_OFFSET[0]) / 1000
+        y_pos = (self._drive_y.get_encoder_position() - CALIBRATION_OFFSET[1]) / 1000
+        z_pos = (self._drive_z.get_encoder_position()) / 1000
+        return (x_pos, y_pos, z_pos)
 
     def get_drive_state(self, drive: DriveTarget) -> DriveState:
         """Get the status of a drive.

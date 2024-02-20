@@ -81,8 +81,8 @@ class DriveError:
 
 
 # The CMMO-ST drive constrollers have separate control registers (write-only)
-# and status registers (read-only). They are subtly different. Consult section
-# 5.4 of the CMMO-ST FHPP datasheet for details on the mapping.
+# and status registers (read-only). They are subtly different. Consult sections
+# 5.3 and 5.4 of the CMMO-ST FHPP datasheet for details on the mapping.
 
 # The classes defined below contain the full contents of these registers.
 
@@ -400,9 +400,9 @@ class Drive:
         self.error_code = result.encode()
         logging.debug("Exception code: %s", self.error_code)
 
-    def get_pos_mm(self) -> float:
-        return self.reg_status.position * 7.93
-        # TODO Find constant formula
+    def get_encoder_position(self) -> int:
+        """Get the encoder position in micrometers."""
+        return self.reg_status.position
 
     def get_status(self) -> DriveState:
         """Identify the drive state from the status registers."""
@@ -422,7 +422,6 @@ class Drive:
 
     def get_exception(self) -> DriveError:
         """Match the drive error to an exception code."""
-
         # TODO Get the other error messages
         match self.error_code:
             case bytes.fromhex("00"):
