@@ -6,7 +6,7 @@ maintains Modbus connections with each of the drives and provides convenience
 methods for controlling them. See the [documentation][apidocs] for more
 information.
 
-[apidocs]: https://msudesigncpr.github.io/libmotorctrl
+[apidocs]: https://msudesigncpr.github.io/libmotorctrl/drive_manager.html
 
 ## Getting Started
 
