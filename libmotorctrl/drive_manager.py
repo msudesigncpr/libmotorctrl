@@ -23,6 +23,12 @@ micrometers.
 This is applied as an offset to all movement commands, before the coordinates
 are sent to their respective drive controllers."""
 
+BOUNDS = ((47_000, 500_000), (0, 225_000))
+"""The x and y-axis limits for motion.
+
+If a movement command is issued that would move beyond these bounds,
+the system will raise an exception. Data structure TBD"""
+
 
 class DriveTarget(Enum):
     """A drive target used for methods which require specifying a
@@ -31,6 +37,12 @@ class DriveTarget(Enum):
     DriveX = 0
     DriveY = 1
     DriveZ = 2
+
+
+class DriveManagerError(Exception):
+    """An error raised by the drive manager."""
+
+    pass
 
 
 class DriveManager:
@@ -100,6 +112,17 @@ class DriveManager:
         calibration point. To execute a movement command, the system
         will raise the z-axis to the specified `CRUISE_DEPTH`, move
         the x and y axes, and then lower the z-axis to `target_z`."""
+
+        try:
+            if not (BOUNDS[0][0] < target_x < BOUNDS[0][1]):
+                raise DriveManagerError("X coordinate exceeds limits")
+
+            if not (BOUNDS[1][0] < target_y < BOUNDS[1][1]):
+                raise DriveManagerError("Y coordinate exceeds limits")
+        except DriveManagerError as e:
+            logging.critical("Unhandled error '%s', terminating...", e)
+            await self.terminate()
+            raise
 
         await self._drive_z.move(CRUISE_DEPTH)
         logging.info("Drive Z raised to cruise depth")
