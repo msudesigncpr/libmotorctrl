@@ -23,7 +23,7 @@ micrometers.
 This is applied as an offset to all movement commands, before the coordinates
 are sent to their respective drive controllers."""
 
-BOUNDS = ((47_000, 500_000), (0, 225_000))
+BOUNDS = ((47_000, 500_000), (0 - CALIBRATION_OFFSET[1], 225_000 - CALIBRATION_OFFSET[1]))
 """The x and y-axis limits for motion.
 
 If a movement command is issued that would move beyond these bounds,
@@ -114,10 +114,10 @@ class DriveManager:
         the x and y axes, and then lower the z-axis to `target_z`."""
 
         try:
-            if not (BOUNDS[0][0] < target_x < BOUNDS[0][1]):
+            if not (BOUNDS[0][0] <= target_x <= BOUNDS[0][1]):
                 raise DriveManagerError("X coordinate exceeds limits")
 
-            if not (BOUNDS[1][0] < target_y < BOUNDS[1][1]):
+            if not (BOUNDS[1][0] <= target_y <= BOUNDS[1][1]):
                 raise DriveManagerError("Y coordinate exceeds limits")
         except DriveManagerError as e:
             logging.critical("Unhandled error '%s', terminating...", e)
