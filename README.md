@@ -16,7 +16,7 @@ Install with pip directly from this repository:
 
 ```sh
 python -m venv .venv
-source .venv/bin/activate
+.\.venv\Scripts\activate # Un*x systems: source .venv/bin/activate
 pip install "git+https://github.com/msudesigncpr/libmotorctrl.git"
 ```
 
