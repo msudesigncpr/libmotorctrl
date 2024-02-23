@@ -23,7 +23,10 @@ micrometers.
 This is applied as an offset to all movement commands, before the coordinates
 are sent to their respective drive controllers."""
 
-BOUNDS = ((47_000, 500_000), (0 - CALIBRATION_OFFSET[1], 225_000 - CALIBRATION_OFFSET[1]))
+BOUNDS = (
+    (47_000, 500_000),
+    (0 - CALIBRATION_OFFSET[1], 225_000 - CALIBRATION_OFFSET[1]),
+)
 """The x and y-axis limits for motion.
 
 If a movement command is issued that would move beyond these bounds,

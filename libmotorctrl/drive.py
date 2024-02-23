@@ -15,7 +15,7 @@ class DriveState(Enum):
     READY = 0
     """Drive has no faults or warnings and is ready for movement."""
     WARN = 1
-    """There are no error present, but there is a warning. The drive
+    """There are no errors present, but there is a warning. The drive
     may or may not still be able to move."""
     ERROR = 2
     """An error is present. The drive will not move."""
@@ -81,7 +81,7 @@ class ControlMode(IntEnum):
     RESERVED = 0b11
 
 
-# The CMMO-ST drive constrollers have separate control registers (write-only)
+# The CMMO-ST drive controllers have separate control registers (write-only)
 # and status registers (read-only). They are subtly different. Consult sections
 # 5.3 and 5.4 of the CMMO-ST FHPP datasheet for details on the mapping.
 
@@ -316,40 +316,36 @@ class Drive:
             logging.error("Modbus read response was an error!")
             raise DriveActionError("Invalid drive response")
         else:
+            # fmt: off
             # Parse SCON
-            self.reg_status.drive_enabled = bool(((result.registers[0] >> 0) >> 8) & 1)
-            self.reg_status.operation_enabled = bool(
-                ((result.registers[0] >> 1) >> 8) & 1
-            )
-            self.reg_status.warning_present = bool(
-                ((result.registers[0] >> 2) >> 8) & 1
-            )
-            self.reg_status.fault_present = bool(((result.registers[0] >> 3) >> 8) & 1)
-            self.reg_status.load_applied = bool(((result.registers[0] >> 4) >> 8) & 1)
-            self.reg_status.fct_blocked = bool(((result.registers[0] >> 5) >> 8) & 1)
-            self.reg_status.operation_mode = int((result.registers[0] >> 6) >> 8)
+            self.reg_status.drive_enabled = bool(((result.registers[0]     >> 0) >> 8) & 1)
+            self.reg_status.operation_enabled = bool(((result.registers[0] >> 1) >> 8) & 1)
+            self.reg_status.warning_present = bool(((result.registers[0]   >> 2) >> 8) & 1)
+            self.reg_status.fault_present = bool(((result.registers[0]     >> 3) >> 8) & 1)
+            self.reg_status.load_applied = bool(((result.registers[0]      >> 4) >> 8) & 1)
+            self.reg_status.fct_blocked = bool(((result.registers[0]       >> 5) >> 8) & 1)
+            self.reg_status.operation_mode = int((result.registers[0]      >> 6) >> 8)
 
             # Parse SPOS
-            self.reg_status.halt_active = not bool((result.registers[0] >> 0) & 1)
-            self.reg_status.ack_start = bool((result.registers[0] >> 1) & 1)
-            self.reg_status.motion_complete = bool((result.registers[0] >> 2) & 1)
-            self.reg_status.ack_teach = bool((result.registers[0] >> 3) & 1)
-            self.reg_status.is_moving = bool((result.registers[0] >> 4) & 1)
-            self.reg_status.following_error = bool((result.registers[0] >> 5) & 1)
+            self.reg_status.halt_active = not bool((result.registers[0]  >> 0) & 1)
+            self.reg_status.ack_start = bool((result.registers[0]        >> 1) & 1)
+            self.reg_status.motion_complete = bool((result.registers[0]  >> 2) & 1)
+            self.reg_status.ack_teach = bool((result.registers[0]        >> 3) & 1)
+            self.reg_status.is_moving = bool((result.registers[0]        >> 4) & 1)
+            self.reg_status.following_error = bool((result.registers[0]  >> 5) & 1)
             self.reg_status.still_monitoring = bool((result.registers[0] >> 6) & 1)
-            self.reg_status.reference_set = bool((result.registers[0] >> 7) & 1)
+            self.reg_status.reference_set = bool((result.registers[0]    >> 7) & 1)
 
             # Parse SDIR
-            self.reg_status.setpoint_mode = int(((result.registers[1] >> 0) >> 8) & 1)
-            self.reg_status.control_mode = int(((result.registers[1] >> 1) >> 8) & 0b11)
-            self.reg_status.speed_limit_reached = bool(
-                ((result.registers[1] >> 4) >> 8) & 1
-            )
-            self.reg_status.stroke_limit_reached = bool(
-                ((result.registers[1] >> 5) >> 8) & 1
-            )
+            self.reg_status.setpoint_mode = int(((result.registers[1]         >> 0) >> 8) & 1)
+            self.reg_status.control_mode = int(((result.registers[1]          >> 1) >> 8) & 0b11)
+            self.reg_status.speed_limit_reached = bool(((result.registers[1]  >> 4) >> 8) & 1)
+            self.reg_status.stroke_limit_reached = bool(((result.registers[1] >> 5) >> 8) & 1)
+            # fmt: on
+
             # Drive actual velocity (%)
             self.reg_status.velocity_percent = int(result.registers[1] & 0xFFFF)
+
             # Drive actual position (sinc)
             self.reg_status.position = int(
                 (result.registers[2] << 16) + result.registers[3]
@@ -360,27 +356,30 @@ class Drive:
     def reg_write(self):
         register_out = [0x0000, 0x0000, 0x0000, 0x0000]
 
+        # fmt: off
         # CCON
-        register_out[0] |= (int(self.reg_control.drive_enabled) << 0) << 8
+        register_out[0] |= (int(self.reg_control.drive_enabled)     << 0) << 8
         register_out[0] |= (int(self.reg_control.operation_enabled) << 1) << 8
-        register_out[0] |= (int(not self.reg_control.brake_active) << 2) << 8
-        register_out[0] |= (int(self.reg_control.reset) << 3) << 8
-        register_out[0] |= (int(self.reg_control.fct_blocked) << 5) << 8
-        register_out[0] |= (int(self.reg_control.operation_mode) << 6) << 8
+        register_out[0] |= (int(not self.reg_control.brake_active)  << 2) << 8
+        register_out[0] |= (int(self.reg_control.reset)             << 3) << 8
+        # Bit 4 is reserved
+        register_out[0] |= (int(self.reg_control.fct_blocked)       << 5) << 8
+        register_out[0] |= (int(self.reg_control.operation_mode)    << 6) << 8
 
         # CPOS
-        register_out[0] |= int(not self.reg_control.halt_active) << 0
+        register_out[0] |= int(not self.reg_control.halt_active)   << 0
         register_out[0] |= int(self.reg_control.positioning_start) << 1
-        register_out[0] |= int(self.reg_control.homing_start) << 2
-        register_out[0] |= int(self.reg_control.jog_positive) << 3
-        register_out[0] |= int(self.reg_control.jog_negative) << 4
-        register_out[0] |= int(self.reg_control.teach) << 5
-        register_out[0] |= int(self.reg_control.clear_path) << 6
+        register_out[0] |= int(self.reg_control.homing_start)      << 2
+        register_out[0] |= int(self.reg_control.jog_positive)      << 3
+        register_out[0] |= int(self.reg_control.jog_negative)      << 4
+        register_out[0] |= int(self.reg_control.teach)             << 5
+        register_out[0] |= int(self.reg_control.clear_path)        << 6
 
         # CDIR
-        register_out[1] |= (int(self.reg_control.setpoint_mode) << 0) << 8
-        register_out[1] |= (int(self.reg_control.control_mode) << 1) << 8
+        register_out[1] |= (int(self.reg_control.setpoint_mode)       << 0) << 8
+        register_out[1] |= (int(self.reg_control.control_mode)        << 1) << 8
         register_out[1] |= (int(self.reg_control.stroke_limit_bypass) << 5) << 8
+        # fmt: on
 
         # SP 1
         register_out[1] |= self.reg_control.preselection
@@ -422,7 +421,9 @@ class Drive:
             return DriveState.DISABLED
 
     def get_exception(self) -> DriveError:
-        """Match the drive error to an exception code."""
+        """Match the drive error to an exception code.
+
+        These are pulled straight from Appendix D of the FHPP datasheet."""
         # TODO Get the other error messages
         match self.error_code:
             case bytes.fromhex("00"):
@@ -439,14 +440,21 @@ class Drive:
         return DriveError(self.error_code, error_desc)
 
     async def stop(self):
+        """Set the halt bit, immediately stopping the drive."""
         self.reg_control.halt_active = True
         await asyncio.sleep(0.2)
 
     async def resume(self):
+        """Clear the halt bit, allowing the drive to continue moving."""
         self.reg_control.halt_active = False
         await asyncio.sleep(0.2)
 
     async def reset_error(self):
+        """Toggle the reset bit, clearing acknowledgeable drive errors.
+
+        Some errors are acknowledgeable and can be resolved by toggling reset.
+        Others (such as electrical problems) cannot be acknowledged. Refer to
+        the device parameterization for details."""
         # This needs more testing
         logging.debug("Clearing faults...")
         self.reg_control.reset = True
@@ -462,6 +470,6 @@ class Drive:
             logging.debug("Writing registers...")
             self.reg_write()
             self.reg_read()
-            self.read_exception()  # TODO Only if error?
+            self.read_exception()
             time.sleep(0.1)
         logging.debug("Worker exiting...")
