@@ -20,7 +20,7 @@ python -m venv .venv
 pip install "git+https://github.com/msudesigncpr/libmotorctrl.git"
 ```
 
-All methods provided by this library are provided as coroutines, to
+All methods provided by this library are provided as coroutines to
 facillitate performing tasks on multiple drive controllers
 concurrently without interfering with the rest of the process control
 code. Please familiarize yourself with [the asyncio
