@@ -3,7 +3,13 @@ import json
 import logging
 import sys
 from libmotorctrl import DriveManager, DriveTarget
-from constants import *
+from support.constants import (
+    STERILIZER_COORDINATES,
+    PETRI_DISH_DEPTH,
+    WELL_DEPTH,
+    WELLS,
+)
+from support.datastructures import Colony
 
 LOGLEVEL = logging.INFO
 STERILIZER_DWELL_DURATION = 5

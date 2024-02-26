@@ -1,32 +1,9 @@
-from dataclasses import dataclass
+from .datastructures import PetriDish, Well
 
 STERILIZER_COORDINATES = (461_330, 87_950, 60_000)  # Micrometers  # TODO
 PETRI_DISH_DEPTH = 80_000  # Micrometers # TODO Check depth
 WELL_DEPTH = 80_000  # Micrometers # TODO Check depth
 CAMERA_POS_OFFSET = 20  # Micrometers # TODO Find real value
-
-
-@dataclass
-class Colony:
-    dish: str
-    x: float
-    y: float
-
-
-@dataclass
-class PetriDish:
-    id: int
-    x: int
-    y: int
-
-
-@dataclass
-class Well:
-    id: str
-    x: float
-    y: float
-    has_sample: bool
-    origin: str
 
 
 PETRI_DISHS = [
