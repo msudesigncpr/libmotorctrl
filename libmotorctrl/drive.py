@@ -227,6 +227,10 @@ class Drive:
         )
 
         self.client.connect()
+        if not self.client.connected:
+            logging.critical("Connection failed!")
+            raise DriveActionError("Connection failed!")
+
         logging.debug("Client is connected!")
 
         logging.debug("Initializing write thread...")
