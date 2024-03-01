@@ -6,7 +6,6 @@ from enum import Enum
 from .drive import Drive, DriveState, DriveError
 
 # TODO Add locks for drive actions
-# TODO Clamp position values based on calibration
 # TODO Refactor parse/write to use callbacks
 
 CRUISE_DEPTH = 20_000
@@ -16,7 +15,7 @@ obstacles. Specified in micrometers.
 The z-axis will be moved to this height when executing movement commands before
 adjusting the x and y-axes."""
 
-CALIBRATION_OFFSET = (0, 90_000)  # TODO Get this from calibration
+CALIBRATION_OFFSET = (8_820, 119_690)  # TODO Get this from calibration
 """The location of the calibration point in (x,y) format. Specified in
 micrometers.
 
