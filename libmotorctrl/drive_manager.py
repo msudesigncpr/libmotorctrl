@@ -15,22 +15,6 @@ obstacles. Specified in micrometers.
 The z-axis will be moved to this height when executing movement commands before
 adjusting the x and y-axes."""
 
-CALIBRATION_OFFSET = (8_820, 119_690)  # TODO Get this from calibration
-"""The location of the calibration point in (x,y) format. Specified in
-micrometers.
-
-This is applied as an offset to all movement commands, before the coordinates
-are sent to their respective drive controllers."""
-
-BOUNDS = (
-    (47_000, 500_000),
-    (0 - CALIBRATION_OFFSET[1], 225_000 - CALIBRATION_OFFSET[1]),
-)
-"""The x and y-axis limits for motion.
-
-If a movement command is issued that would move beyond these bounds,
-the system will raise an exception. Data structure TBD"""
-
 
 class DriveTarget(Enum):
     """A drive target used for methods which require specifying a
@@ -67,6 +51,23 @@ class DriveManager:
     Once the full sampling run is complete, the drives can be disabled by
     calling the `terminate()` method."""
 
+    _is_calibrated = False
+    _calibration_offset = (0, 0)
+    """The location of the calibration point in (x,y) format. Specified in
+    micrometers.
+
+    This is applied as an offset to all movement commands, before the coordinates
+    are sent to their respective drive controllers."""
+
+    _MOVEMENT_BOUNDS = (
+        (47_000, 500_000),
+        (0 - _calibration_offset[1], 225_000 - _calibration_offset[1]),
+    )
+    """The x and y-axis limits for motion.
+
+    If a movement command is issued that would move beyond these bounds,
+    the system will raise an exception. Data structure TBD"""
+
     def __init__(self):
         """Initialize the drives.
 
@@ -95,7 +96,7 @@ class DriveManager:
     async def home(self, drive: DriveTarget):
         """Home the targeted drive.
 
-        This method homes the target drive. It is probably desirable
+        This method homes the target drive. It is usually desirable
         to home the z-axis drive first to avoid colliding with
         obstacles while homing the other drives."""
 
@@ -107,6 +108,17 @@ class DriveManager:
             case DriveTarget.DriveZ:
                 await self._drive_z.home()
 
+    def set_calibration_offset(self, x_cal, y_cal):
+        """Set the calibration offset to the provided coordinates.
+
+        Coordinates must be provided as um integer offsets. This
+        offset corresponds with the illuminated pinhole on the
+        baseplate."""
+
+        self._calibration_offset = (x_cal, y_cal)
+        self._is_calibrated = True
+        logging.info("Calibration offset is %s, %s", x_cal, y_cal)
+
     async def move(self, target_x: int, target_y: int, target_z: int):
         """Move to the designated coordinates.
 
@@ -116,10 +128,14 @@ class DriveManager:
         the x and y axes, and then lower the z-axis to `target_z`."""
 
         try:
-            if not (BOUNDS[0][0] <= target_x <= BOUNDS[0][1]):
+            if not (
+                self._MOVEMENT_BOUNDS[0][0] <= target_x <= self._MOVEMENT_BOUNDS[0][1]
+            ):
                 raise DriveManagerError("X coordinate exceeds limits")
 
-            if not (BOUNDS[1][0] <= target_y <= BOUNDS[1][1]):
+            if not (
+                self._MOVEMENT_BOUNDS[1][0] <= target_y <= self._MOVEMENT_BOUNDS[1][1]
+            ):
                 raise DriveManagerError("Y coordinate exceeds limits")
         except DriveManagerError as e:
             logging.critical("Unhandled error '%s', terminating...", e)
@@ -131,8 +147,12 @@ class DriveManager:
 
         # Run the X and Y motions concurrently
         async with asyncio.TaskGroup() as move_tg:
-            move_tg.create_task(self._drive_x.move(target_x + CALIBRATION_OFFSET[0]))
-            move_tg.create_task(self._drive_y.move(target_y + CALIBRATION_OFFSET[1]))
+            move_tg.create_task(
+                self._drive_x.move(target_x + self._calibration_offset[0])
+            )
+            move_tg.create_task(
+                self._drive_y.move(target_y + self._calibration_offset[1])
+            )
         logging.info("XY motion complete")
 
         await self._drive_z.move(target_z)
@@ -188,9 +208,26 @@ class DriveManager:
         This is measured by the encoders in each drive, and is an
         offset from the calibration point."""
 
-        x_pos = (self._drive_x.get_encoder_position() - CALIBRATION_OFFSET[0]) / 1000
-        y_pos = (self._drive_y.get_encoder_position() - CALIBRATION_OFFSET[1]) / 1000
-        z_pos = (self._drive_z.get_encoder_position()) / 1000
+        x_pos = (
+            self._drive_x.get_encoder_position() - self._calibration_offset[0]
+        ) / 1000
+        y_pos = (
+            self._drive_y.get_encoder_position() - self._calibration_offset[1]
+        ) / 1000
+        z_pos = self._drive_z.get_encoder_position() / 1000
+        return (x_pos, y_pos, z_pos)
+
+    def get_position_raw(self) -> (float, float, float):
+        """Get the position of the picker-head in micrometers.
+
+        This is the raw encoder position, which is an offset from the
+        drive origin rather than the calibration point. The
+        `get_position` method should be used unless you know what you
+        are doing."""
+
+        x_pos = self._drive_x.get_encoder_position()
+        y_pos = self._drive_y.get_encoder_position()
+        z_pos = self._drive_z.get_encoder_position()
         return (x_pos, y_pos, z_pos)
 
     def get_drive_state(self, drive: DriveTarget) -> DriveState:
