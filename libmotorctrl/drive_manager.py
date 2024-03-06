@@ -8,7 +8,7 @@ from .drive import Drive, DriveState, DriveError
 # TODO Add locks for drive actions
 # TODO Refactor parse/write to use callbacks
 
-CRUISE_DEPTH = 20_000
+CRUISE_DEPTH = 0
 """A safe depth for the z-axis to descend to where it cannot collide with any
 obstacles. Specified in micrometers.
 
@@ -51,8 +51,7 @@ class DriveManager:
     Once the full sampling run is complete, the drives can be disabled by
     calling the `terminate()` method."""
 
-    _is_calibrated = False
-    _calibration_offset = (0, 0)
+    _calibration_offset = (8_660, 119_340)
     """The location of the calibration point in (x,y) format. Specified in
     micrometers.
 
@@ -60,13 +59,13 @@ class DriveManager:
     are sent to their respective drive controllers."""
 
     _MOVEMENT_BOUNDS = (
-        (47_000, 500_000),
+        (47_000 - _calibration_offset[0], 500_000 - _calibration_offset[0]),
         (0 - _calibration_offset[1], 225_000 - _calibration_offset[1]),
     )
     """The x and y-axis limits for motion.
 
     If a movement command is issued that would move beyond these bounds,
-    the system will raise an exception. Data structure TBD"""
+    the system will raise an exception."""
 
     def __init__(self):
         """Initialize the drives.
@@ -108,7 +107,7 @@ class DriveManager:
             case DriveTarget.DriveZ:
                 await self._drive_z.home()
 
-    def set_calibration_offset(self, x_cal, y_cal):
+    def set_calibration_offset(self, x_cal: int, y_cal: int):
         """Set the calibration offset to the provided coordinates.
 
         Coordinates must be provided as um integer offsets. This
@@ -116,7 +115,6 @@ class DriveManager:
         baseplate."""
 
         self._calibration_offset = (x_cal, y_cal)
-        self._is_calibrated = True
         logging.info("Calibration offset is %s, %s", x_cal, y_cal)
 
     async def move(self, target_x: int, target_y: int, target_z: int):
@@ -125,7 +123,12 @@ class DriveManager:
         Coordinates must be provided as um integer offsets from the
         calibration point. To execute a movement command, the system
         will raise the z-axis to the specified `CRUISE_DEPTH`, move
-        the x and y axes, and then lower the z-axis to `target_z`."""
+        the x and y axes, and then lower the z-axis to `target_z`.
+
+        Note that the motion bounds which are used to restrict the
+        range of motion to within the bounds of the frame are relative
+        to the calibration point, and if the machine is not calibrated
+        the bounds will not be applied."""
 
         try:
             if not (
@@ -144,6 +147,48 @@ class DriveManager:
 
         await self._drive_z.move(CRUISE_DEPTH)
         logging.info("Drive Z raised to cruise depth")
+
+        # Run the X and Y motions concurrently
+        async with asyncio.TaskGroup() as move_tg:
+            move_tg.create_task(
+                self._drive_x.move(target_x + self._calibration_offset[0])
+            )
+            move_tg.create_task(
+                self._drive_y.move(target_y + self._calibration_offset[1])
+            )
+        logging.info("XY motion complete")
+
+        await self._drive_z.move(target_z)
+        logging.info("Z motion complete")
+
+    async def move_direct(self, target_x: int, target_y: int, target_z: int):
+        """Move to the designated coordinates without raising the z-axis.
+
+        Coordinates must be provided as um integer offsets from the
+        calibration point. To execute a movement command, the system
+        will move the x and y axes, and then lower the z-axis to
+        `target_z`. Use the `move()` method to minimize the risk of
+        colliding with any obstacles while in transit.
+
+        Note that the motion bounds which are used to restrict the
+        range of motion to within the bounds of the frame are relative
+        to the calibration point, and if the machine is not calibrated
+        the bounds will not be applied."""
+
+        try:
+            if not (
+                self._MOVEMENT_BOUNDS[0][0] <= target_x <= self._MOVEMENT_BOUNDS[0][1]
+            ):
+                raise DriveManagerError("X coordinate exceeds limits")
+
+            if not (
+                self._MOVEMENT_BOUNDS[1][0] <= target_y <= self._MOVEMENT_BOUNDS[1][1]
+            ):
+                raise DriveManagerError("Y coordinate exceeds limits")
+        except DriveManagerError as e:
+            logging.critical("Unhandled error '%s', terminating...", e)
+            await self.terminate()
+            raise
 
         # Run the X and Y motions concurrently
         async with asyncio.TaskGroup() as move_tg:
@@ -222,7 +267,7 @@ class DriveManager:
 
         This is the raw encoder position, which is an offset from the
         drive origin rather than the calibration point. The
-        `get_position` method should be used unless you know what you
+        `get_position()` method should be used unless you know what you
         are doing."""
 
         x_pos = self._drive_x.get_encoder_position()
