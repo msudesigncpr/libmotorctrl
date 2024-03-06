@@ -27,7 +27,7 @@ async def main():
 
     await drive_ctrl.move(38_340, -119_340, 0)
     _ = input()
-    await drive_ctrl.move(491_340, 105_660, 0)
+    await drive_ctrl.move(485_340, 105_660, 0)
     _ = input()
 
     logging.info("Motion start!")

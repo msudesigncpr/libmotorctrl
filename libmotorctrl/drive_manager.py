@@ -59,7 +59,7 @@ class DriveManager:
     are sent to their respective drive controllers."""
 
     _MOVEMENT_BOUNDS = (
-        (47_000 - _calibration_offset[0], 500_000 - _calibration_offset[0]),
+        (47_000 - _calibration_offset[0], 494_000 - _calibration_offset[0]),
         (0 - _calibration_offset[1], 225_000 - _calibration_offset[1]),
     )
     """The x and y-axis limits for motion.
