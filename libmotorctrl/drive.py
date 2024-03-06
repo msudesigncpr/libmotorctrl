@@ -297,6 +297,13 @@ class Drive:
             await asyncio.sleep(0.1)
             logging.debug("%s: Waiting for motion to complete...", self.name)
             if self.get_status() == DriveState.ERROR:
+                drive_exception = self.get_exception()
+                logging.critical(
+                    "Drive %s entered error state 0x%s during motion: %s",
+                    self.name,
+                    drive_exception.error_code.hex(),
+                    drive_exception.error_desc,
+                )
                 raise DriveActionError("Movement aborted!")
 
         logging.debug("%s: Drive positioning complete!", self.name)
@@ -429,14 +436,16 @@ class Drive:
 
         These are pulled straight from Appendix D of the FHPP datasheet."""
         # TODO Get the other error messages
-        match self.error_code:
-            case bytes.fromhex("00"):
+        match self.error_code.hex():
+            case "00":
                 error_desc = "N/A"
-            case bytes.fromhex("01"):
+            case "01":
                 error_desc = "Software error"
-            case bytes.fromhex("02"):
+            case "02":
                 error_desc = "Default parameter file invalid"
-            case bytes.fromhex("47"):
+            case "2a":
+                error_desc = "Target position behind software limit"
+            case "47":
                 error_desc = "Modbus connection with master control"
             case _:
                 error_desc = "Unknown error"
