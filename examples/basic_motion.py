@@ -25,6 +25,11 @@ async def main():
     logging.info("S: %s", drive_ctrl.get_drive_state(DriveTarget.DriveX))
     logging.info("Homing complete")
 
+    await drive_ctrl.move(38_340, -119_340, 0)
+    _ = input()
+    await drive_ctrl.move(491_340, 105_660, 0)
+    _ = input()
+
     logging.info("Motion start!")
     task = asyncio.create_task(drive_ctrl.move(150_000, 0, 0))
     await asyncio.sleep(2.5)
@@ -36,7 +41,6 @@ async def main():
         logging.error("Drive error: %s", e)
         sys.exit(1)
     logging.warning("Encoder says: %s", drive_ctrl.get_position())
-    _ = input()
     # logging.info("Motion 1 complete")
     # await drive_ctrl.move(347_000, 100_000, 60_000)
     # logging.info("Motion 2 complete")

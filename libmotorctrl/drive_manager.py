@@ -3,7 +3,7 @@
 import asyncio
 import logging
 from enum import Enum
-from .drive import Drive, DriveState, DriveError
+from .drive import Drive, DriveState, DriveActionError, DriveError
 
 # TODO Add locks for drive actions
 # TODO Refactor parse/write to use callbacks
@@ -127,8 +127,15 @@ class DriveManager:
 
         Note that the motion bounds which are used to restrict the
         range of motion to within the bounds of the frame are relative
-        to the calibration point, and if the machine is not calibrated
-        the bounds will not be applied."""
+        to the calibration point. The calibration should be checked at
+        startup to verify that the bounds are accurate. There are
+        separate software limits set in the drive controller
+        parameterization which will put the drive in an error state if
+        a command exceeding the parameterization bounds is
+        received.
+
+        Also note that there is no software restriction imposed on the
+        motion of the z-axis."""
 
         try:
             if not (
@@ -145,21 +152,26 @@ class DriveManager:
             await self.terminate()
             raise
 
-        await self._drive_z.move(CRUISE_DEPTH)
-        logging.info("Drive Z raised to cruise depth")
+        try:
+            await self._drive_z.move(CRUISE_DEPTH)
+            logging.info("Drive Z raised to cruise depth")
 
-        # Run the X and Y motions concurrently
-        async with asyncio.TaskGroup() as move_tg:
-            move_tg.create_task(
-                self._drive_x.move(target_x + self._calibration_offset[0])
-            )
-            move_tg.create_task(
-                self._drive_y.move(target_y + self._calibration_offset[1])
-            )
-        logging.info("XY motion complete")
+            # Run the X and Y motions concurrently
+            async with asyncio.TaskGroup() as move_tg:
+                move_tg.create_task(
+                    self._drive_x.move(target_x + self._calibration_offset[0])
+                )
+                move_tg.create_task(
+                    self._drive_y.move(target_y + self._calibration_offset[1])
+                )
+            logging.info("XY motion complete")
 
-        await self._drive_z.move(target_z)
-        logging.info("Z motion complete")
+            await self._drive_z.move(target_z)
+            logging.info("Z motion complete")
+        except:
+            logging.critical("Unhandled movement error, terminating...")
+            await self.terminate()
+            raise
 
     async def move_direct(self, target_x: int, target_y: int, target_z: int):
         """Move to the designated coordinates without raising the z-axis.
@@ -172,36 +184,33 @@ class DriveManager:
 
         Note that the motion bounds which are used to restrict the
         range of motion to within the bounds of the frame are relative
-        to the calibration point, and if the machine is not calibrated
-        the bounds will not be applied."""
+        to the calibration point. The calibration should be checked at
+        startup to verify that the bounds are accurate. There are
+        separate software limits set in the drive controller
+        parameterization which will put the drive in an error state if
+        a command exceeding the parameterization bounds is
+        received.
+
+        Also note that there is no software restriction imposed on the
+        motion of the z-axis."""
 
         try:
-            if not (
-                self._MOVEMENT_BOUNDS[0][0] <= target_x <= self._MOVEMENT_BOUNDS[0][1]
-            ):
-                raise DriveManagerError("X coordinate exceeds limits")
+            # Run the X and Y motions concurrently
+            async with asyncio.TaskGroup() as move_tg:
+                move_tg.create_task(
+                    self._drive_x.move(target_x + self._calibration_offset[0])
+                )
+                move_tg.create_task(
+                    self._drive_y.move(target_y + self._calibration_offset[1])
+                )
+            logging.info("XY motion complete")
 
-            if not (
-                self._MOVEMENT_BOUNDS[1][0] <= target_y <= self._MOVEMENT_BOUNDS[1][1]
-            ):
-                raise DriveManagerError("Y coordinate exceeds limits")
-        except DriveManagerError as e:
-            logging.critical("Unhandled error '%s', terminating...", e)
+            await self._drive_z.move(target_z)
+            logging.info("Z motion complete")
+        except:
+            logging.critical("Unhandled movement error, terminating...")
             await self.terminate()
             raise
-
-        # Run the X and Y motions concurrently
-        async with asyncio.TaskGroup() as move_tg:
-            move_tg.create_task(
-                self._drive_x.move(target_x + self._calibration_offset[0])
-            )
-            move_tg.create_task(
-                self._drive_y.move(target_y + self._calibration_offset[1])
-            )
-        logging.info("XY motion complete")
-
-        await self._drive_z.move(target_z)
-        logging.info("Z motion complete")
 
     async def stop(self):
         """Immediately stop all movement.
