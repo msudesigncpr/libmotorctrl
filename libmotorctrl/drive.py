@@ -1,12 +1,17 @@
 import asyncio
+import json
 import logging
 import threading
 import time
 from enum import Enum, IntEnum
 from dataclasses import dataclass
+from pathlib import Path
 from pymodbus.client import ModbusTcpClient
 
 logging.getLogger("pymodbus").setLevel(logging.WARNING)
+
+with open(Path(__file__).parent / "diagnostic_messages.json", "r") as f:
+    DIAGNOSTIC_MESSAGES = json.load(f)
 
 
 class DriveState(Enum):
@@ -435,21 +440,8 @@ class Drive:
         """Match the drive error to an exception code.
 
         These are pulled straight from Appendix D of the FHPP datasheet."""
-        # TODO Get the other error messages
-        match self.error_code.hex():
-            case "00":
-                error_desc = "N/A"
-            case "01":
-                error_desc = "Software error"
-            case "02":
-                error_desc = "Default parameter file invalid"
-            case "2a":
-                error_desc = "Target position behind software limit"
-            case "47":
-                error_desc = "Modbus connection with master control"
-            case _:
-                error_desc = "Unknown error"
 
+        error_desc = DIAGNOSTIC_MESSAGES[self.error_code.hex()]
         return DriveError(self.error_code, error_desc)
 
     async def stop(self):
