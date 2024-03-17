@@ -1,0 +1,42 @@
+[build-system]
+requires = ["setuptools>=69.2.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "libmotorctrl"
+authors = [{name = "William Culhane", email = "will@culhane.top"}]
+version = "0.3.0"
+description = "Library providing interface methods for the CMMO-ST drive controllers on the colony-picking robot design project"
+readme = "README.md"
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "Operating System :: POSIX :: Linux",
+    "Operating System :: Microsoft",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12"
+]
+requires-python = ">=3.11.0"
+
+[project.urls]
+Homepage = "https://github.com/msudesigncpr/libmotorctrl"
+"Source Code" = "https://github.com/msudesigncpr/libmotorctrl"
+"Docs: Dev" = "https://msudesigncpr.github.io/libmotorctrl/libmotorctrl/drive_manager.html"
+
+[project.optional-dependencies]
+documentation = [
+    "pdoc>=14.1.0,<15.0.0"
+]
+all = [
+    "pymodbus>=3.6.3,<4.0.0"
+]
+
+[tool.setuptools]
+include-package-data = true
+platforms = ["'Linux'", "'Win'"]
+
+[tool.setuptools.exclude-package-data]
+pymodbus = [
+    "examples",
+    "doc"
+]
