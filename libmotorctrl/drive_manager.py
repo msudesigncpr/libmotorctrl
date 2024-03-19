@@ -141,11 +141,23 @@ class DriveManager:
             if not (
                 self._MOVEMENT_BOUNDS[0][0] <= target_x <= self._MOVEMENT_BOUNDS[0][1]
             ):
+                logging.error(
+                    "Out-of-bounds X coordinate (target was %s, %s, %s)",
+                    target_x,
+                    target_y,
+                    target_z,
+                )
                 raise DriveManagerError("X coordinate exceeds limits")
 
             if not (
                 self._MOVEMENT_BOUNDS[1][0] <= target_y <= self._MOVEMENT_BOUNDS[1][1]
             ):
+                logging.error(
+                    "Out-of-bounds Y coordinate (target was %s, %s, %s)",
+                    target_x,
+                    target_y,
+                    target_z,
+                )
                 raise DriveManagerError("Y coordinate exceeds limits")
         except DriveManagerError as e:
             logging.critical("Unhandled error '%s', terminating...", e)
